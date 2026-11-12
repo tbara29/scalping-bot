@@ -84,6 +84,10 @@
   .seg button.on{border-color:var(--bleu);background:#16243a}
   td+td{white-space:nowrap}
   .prix{white-space:nowrap;font-size:26px}
+  .seg{flex-wrap:wrap} .seg button{min-width:30%}
+  .puces{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .puces button{flex:0 0 auto;background:var(--card2);border:1px solid var(--line);padding:8px 12px;font-size:13px;border-radius:99px;color:var(--txt)}
+  .puces button.on{border-color:var(--bleu);background:#16243a}
 </style>
 </head>
 <body>
@@ -102,10 +106,14 @@
 <div class="carte">
   <h2>Type de grille</h2>
   <div class="seg" id="presets">
-    <button data-p="classique" class="on">Classique<small>±10 % · 30 j</small></button>
-    <button data-p="moon">Façon Moon<small>large · 1 an</small></button>
+    <button data-p="serree">Serrée<small>±5 % · 40 · 7 j</small></button>
+    <button data-p="classique" class="on">Classique<small>±10 % · 30 · 30 j</small></button>
+    <button data-p="large">Large<small>±30 % · 80 · 90 j</small></button>
+    <button data-p="moon">Moon<small>-50/+150 · 1 an</small></button>
     <button data-p="perso">Perso<small>⚙️</small></button>
   </div>
+  <h2 style="margin-top:14px">Crypto</h2>
+  <div class="puces" id="puces"><button data-s="BTCUSDT">BTC</button><button data-s="ETHUSDT">ETH</button><button data-s="SOLUSDT">SOL</button><button data-s="XRPUSDT">XRP</button><button data-s="BNBUSDT">BNB</button><button data-s="DOGEUSDT">DOGE</button><button data-s="ADAUSDT">ADA</button><button data-s="AVAXUSDT">AVAX</button><button data-s="LINKUSDT">LINK</button><button data-s="SUIUSDT">SUI</button><button data-s="PEPEUSDT">PEPE</button></div>
   <div class="note" id="descPreset"></div>
 </div>
 
@@ -115,7 +123,7 @@
     <div class="stat grand"><div class="lib">Valeur finale</div><div class="val" id="vFin">—</div></div>
     <div class="stat grand"><div class="lib">Résultat total</div><div class="val" id="vRes">—</div></div>
     <div class="stat"><div class="lib">Profit de grille encaissé</div><div class="val" id="vGrille">—</div></div>
-    <div class="stat"><div class="lib">Latent (BTC détenu)</div><div class="val" id="vLatent">—</div></div>
+    <div class="stat"><div class="lib">Latent (crypto détenue)</div><div class="val" id="vLatent">—</div></div>
     <div class="stat"><div class="lib">Allers-retours</div><div class="val" id="vCycles">—</div></div>
     <div class="stat"><div class="lib">Temps dans la fourchette</div><div class="val" id="vRange">—</div></div>
     <div class="stat"><div class="lib">Si j'avais juste gardé</div><div class="val" id="vHold">—</div></div>
@@ -143,13 +151,14 @@
 
 <div class="actions">
   <button class="second" id="btnReglages" aria-label="Réglages">⚙️</button>
-  <button class="principal" id="btnMulti" style="background:var(--bleu);color:#fff">🔬 Tester sur 12 périodes</button>
+  <button class="principal" id="btnComp" style="background:var(--bleu);color:#fff">🏆 Comparer les cryptos</button>
+  <button class="second" id="btnMulti" aria-label="12 périodes">🔬</button>
 </div>
 
 <div class="feuille" id="feuilleReglages">
   <div class="panneau">
     <h3>Réglages de la grille</h3>
-    <div class="champ"><label>Crypto</label><select id="r_sym"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option></select></div>
+    <div class="champ"><label>Crypto</label><select id="r_sym"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option><option value="XRPUSDT">XRP</option><option value="BNBUSDT">BNB</option><option value="DOGEUSDT">DOGE</option><option value="ADAUSDT">ADA</option><option value="AVAXUSDT">AVAX</option><option value="LINKUSDT">LINK</option><option value="SUIUSDT">SUI</option><option value="PEPEUSDT">PEPE</option></select></div>
     <div class="champ"><label>Durée du test<small>jours jusqu'à aujourd'hui</small></label><input type="number" id="r_dur" step="10"></div>
     <div class="champ"><label>Bas de la fourchette<small>% sous le prix de départ</small></label><input type="number" id="r_bas" step="5"></div>
     <div class="champ"><label>Haut de la fourchette<small>% au-dessus du prix de départ</small></label><input type="number" id="r_haut" step="5"></div>
@@ -164,9 +173,9 @@
 
 <div class="feuille" id="feuilleRes">
   <div class="panneau res">
-    <h3>Test sur 12 périodes</h3>
+    <h3 id="titreFeuille">Test sur 12 périodes</h3>
     <div id="resCorps"></div>
-    <div class="boutons"><button class="second" id="btnFermerRes">Fermer</button></div>
+    <div class="boutons" id="resBoutonsF"><button class="second" id="btnFermerRes">Fermer</button></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -176,8 +185,12 @@
 "use strict";
 const JOUR=86400000;
 const PRESETS={
-  classique:{dur:30, bas:-10, haut:10, n:20, type:"geo", sl:0,
+  classique:{dur:30, bas:-10, haut:10, n:30, type:"geo", sl:0,
     desc:"Grille serrée autour du prix : beaucoup de petits allers-retours. Idéale si le prix fait du « yoyo » sans tendance ; elle souffre si le prix sort franchement de la fourchette."},
+  serree:{dur:7, bas:-5, haut:5, n:40, type:"geo", sl:0,
+    desc:"Grille très serrée (écart ≈ 0,25 %) sur une semaine, bougies de 1 min : maximum d'allers-retours, mais le prix sort vite d'une fourchette de ±5 %. Avec 0,1 % de frais par ordre, l'écart doit rester au-dessus de 0,2 %."},
+  large:{dur:90, bas:-30, haut:30, n:80, type:"geo", sl:0,
+    desc:"Fourchette de ±30 % sur 3 mois avec 80 grilles : bon compromis pour les cryptos volatiles qui font de grands allers-retours."},
   moon:{dur:365, bas:-50, haut:150, n:40, type:"geo", sl:0,
     desc:"Inspirée du BTC Moon de Pionex : fourchette très large et peu de grilles, pour tenir sur une longue durée. Le bot détient du BTC en permanence et encaisse au passage les grandes oscillations."}
 };
@@ -190,15 +203,16 @@ const sauver=()=>{ try{ localStorage.setItem("grille_v1",JSON.stringify(R)); }ca
 const $=id=>document.getElementById(id);
 const pct=v=>(v>=0?"+":"")+(v*100).toFixed(1)+" %";
 const usd=v=>(v<0?"-":"")+Math.abs(v).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" $";
-const fp0=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:0});
+const fp0=v=>{ const a=Math.abs(v); return a>=1000?v.toLocaleString("fr-FR",{maximumFractionDigits:0}) : a>=1?v.toLocaleString("fr-FR",{maximumFractionDigits:3}) : v.toLocaleString("fr-FR",{maximumSignificantDigits:4}); };
+const nomSym=s=>s.replace("USDT","");
 const date=t=>new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"2-digit"});
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 function toast(m){ const e=$("toast"); e.textContent=m; e.classList.add("vu"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("vu"),2600); }
 
 /* ---------------- Données ---------------- */
 const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
-const TFMS={"5m":300000,"15m":900000,"1h":3600000,"4h":14400000};
-const tfPour=d=> d<=30?"5m": d<=120?"15m": d<=400?"1h":"4h";
+const TFMS={"1m":60000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000};
+const tfPour=d=> d<=7?"1m": d<=30?"5m": d<=120?"15m": d<=400?"1h":"4h";
 async function paquet(sym,tf,limit,fin){
   for(const s of SOURCES){
     try{ const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),10000);
@@ -275,12 +289,12 @@ async function lancer(){
   if(d && d.length>nb*0.8){ mode="live"; B=d; } else { mode="demo"; B=genererDemo(nb,ms); }
   $("statut").className="statut "+mode;
   $("statutTxt").textContent=mode==="live"?"Prix réels Binance":"Mode démo (marché simulé)";
-  $("paire").textContent=(R.sym==="BTCUSDT"?"BTC":"ETH")+" / USDT · grille · "+tf;
-  $("prix").textContent=B[B.length-1].c.toLocaleString("fr-FR",{maximumFractionDigits:2})+" $";
+  $("paire").textContent=nomSym(R.sym)+" / USDT · grille · "+tf;
+  $("prix").textContent=fp0(B[B.length-1].c)+" $";
   S=simGrille(B,R); afficher();
 }
 function afficher(){
-  document.querySelectorAll("#presets button").forEach(x=>x.classList.toggle("on",x.dataset.p===R.preset));
+  document.querySelectorAll("#presets button").forEach(x=>x.classList.toggle("on",x.dataset.p===R.preset)); document.querySelectorAll("#puces button").forEach(x=>x.classList.toggle("on",x.dataset.s===R.sym));
   $("descPreset").textContent=R.preset==="perso"?"Tes propres réglages (⚙️).":PRESETS[R.preset].desc;
   $("titreRes").textContent=`Si tu l'avais lancée le ${date(B[0].t)} (${Math.round(S.jours)} jours)`;
   const col=(id,v,txt)=>{ $(id).textContent=txt; $(id).className="val "+(v>=0?"pos":"neg"); };
@@ -296,7 +310,7 @@ function afficher(){
   const ecart=S.res-S.holdRes;
   if(S.res>0 && ecart>=0){ v.className="verdict pos"; v.textContent=`Gagnant, et mieux que de simplement garder (${pct(S.res)} contre ${pct(S.holdRes)}). Le marché a assez oscillé dans la fourchette pour que les allers-retours paient.`; }
   else if(S.res>0){ v.className="verdict neutre"; v.textContent=`Gagnant (${pct(S.res)}), mais moins que de simplement garder (${pct(S.holdRes)}) : en marché qui monte, la grille revend trop tôt.`; }
-  else if(ecart>0){ v.className="verdict neutre"; v.textContent=`Perdant (${pct(S.res)}), mais moins que de garder (${pct(S.holdRes)}). Le profit de grille (${usd(S.encaisse)}) a amorti la baisse sans la compenser : quand le prix descend, la grille finit pleine de BTC.`; }
+  else if(ecart>0){ v.className="verdict neutre"; v.textContent=`Perdant (${pct(S.res)}), mais moins que de garder (${pct(S.holdRes)}). Le profit de grille (${usd(S.encaisse)}) a amorti la baisse sans la compenser : quand le prix descend, la grille finit pleine de crypto achetée plus cher.`; }
   else { v.className="verdict neg"; v.textContent=`Perdant (${pct(S.res)}) et moins bien que garder (${pct(S.holdRes)}).`; }
   if(S.arret) v.textContent+=` Stop-loss déclenché à ${fp0(S.prixArret)} $.`;
   $("recap").innerHTML=[
@@ -338,11 +352,14 @@ function dessinerVal(){
 
 /* ---------------- 🔬 Test sur 12 périodes différentes ---------------- */
 async function multi(){
+  $("titreFeuille").textContent=`Test sur 12 périodes · ${nomSym(R.sym)}`;
+  $("resBoutonsF").innerHTML='<button class="second" id="btnFermerRes2">Fermer</button>';
+  $("btnFermerRes2").onclick=()=>$("feuilleRes").classList.remove("ouverte");
   $("feuilleRes").classList.add("ouverte");
   const tf=R.dur<=120?"1h":"4h", ms=TFMS[tf], total=Math.max(730, R.dur*3), nb=Math.ceil(total*JOUR/ms);
   $("resCorps").innerHTML=`<div class="note" style="margin:0">Même grille (mêmes % autour du prix de départ), lancée à 12 dates différentes sur les ${Math.round(total/365*10)/10} dernières années. Ça montre si le résultat dépend juste de la chance du moment.</div><div class="note" id="etM">Téléchargement…</div>`;
   let b=mode==="live"?await charger(R.sym,tf,nb):null, demo=false;
-  if(!b||b.length<nb*0.8){ b=genererDemo(nb,ms); demo=true; }
+  if(!b||b.length<Math.round(R.dur*JOUR/ms)*2){ b=genererDemo(nb,ms); demo=true; }
   const lg=Math.round(R.dur*JOUR/ms), pas=Math.floor((b.length-lg)/11), lignes=[];
   for(let w=0;w<12;w++){ const de=w*pas, a=Math.min(b.length,de+lg); lignes.push({t:b[de].t, s:simGrille(b,R,de,a)}); }
   await pause(0);
@@ -359,7 +376,7 @@ async function multi(){
     `<div class="ligne"><span>Moyenne grille · garder</span><b>${pct(moy)} · ${pct(moyH)}</b></div>`+
     `<div class="ligne"><span>Meilleure · pire période</span><b><span class="pos">${pct(meil)}</span> · <span class="neg">${pct(pire)}</span></b></div>`+
     `<div class="verdict ${cls}">${v}</div>`+
-    `<table style="margin-top:12px"><tr><th>Départ</th><th>BTC</th><th>Grille</th><th>Encaissé</th></tr>`+
+    `<table style="margin-top:12px"><tr><th>Départ</th><th>${nomSym(R.sym)}</th><th>Grille</th><th>Encaissé</th></tr>`+
     lignes.map(l=>`<tr><td>${date(l.t)}</td><td class="${l.s.holdRes>=0?"pos":"neg"}">${pct(l.s.holdRes)}</td><td class="${l.s.res>=0?"pos":"neg"}">${pct(l.s.res)}</td><td>${usd(l.s.encaisse)}</td></tr>`).join("")+`</table>`+
     `<div class="note">Bougies de ${tf} : les petits allers-retours à l'intérieur d'une bougie ne sont pas comptés, le profit de grille réel serait un peu plus élevé sur une grille serrée.</div>`;
 }
@@ -375,13 +392,44 @@ $("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
 $("btnSauverR").onclick=()=>{
   for(const k of ["sym","dur","bas","haut","n","type","invest","frais","sl"]){ const el=$("r_"+k);
     if(el.tagName==="SELECT") R[k]=el.value; else { const v=parseFloat(el.value); if(isFinite(v)) R[k]=v; } }
-  R.bas=-Math.min(95,Math.abs(R.bas)); R.haut=Math.max(1,R.haut); R.n=Math.max(2,Math.min(300,Math.round(R.n))); R.dur=Math.max(1,Math.min(1500,Math.round(R.dur)));
+  R.bas=-Math.min(95,Math.abs(R.bas)); R.haut=Math.max(1,R.haut); R.n=Math.max(2,Math.min(500,Math.round(R.n))); R.dur=Math.max(1,Math.min(1500,Math.round(R.dur)));
   R.invest=Math.max(1,R.invest); R.frais=Math.max(0,R.frais); R.sl=Math.max(0,R.sl);
   const p=PRESETS[R.preset]; if(!p || ["dur","bas","haut","n","type","sl"].some(k=>p[k]!==R[k])) R.preset="perso";
   sauver(); $("feuilleReglages").classList.remove("ouverte"); lancer();
 };
 $("btnMulti").onclick=multi;
-$("btnFermerRes").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+document.querySelectorAll("#puces button").forEach(bt=>bt.onclick=()=>{ R.sym=bt.dataset.s; sauver(); lancer(); });
+const majPuces=()=>document.querySelectorAll("#puces button").forEach(x=>x.classList.toggle("on",x.dataset.s===R.sym));
+
+/* ---------------- 🏆 Même grille sur toutes les cryptos ---------------- */
+const TOUTES=[...document.querySelectorAll("#puces button")].map(x=>x.dataset.s);
+async function comparer(){
+  $("titreFeuille").textContent="Même grille, toutes les cryptos";
+  $("feuilleRes").classList.add("ouverte");
+  const tf=R.dur<=30?"15m":R.dur<=120?"1h":"4h", ms=TFMS[tf], nb=Math.ceil(R.dur*JOUR/ms);
+  $("resCorps").innerHTML=`<div class="note" style="margin:0">Grille ${R.bas} % / +${R.haut} %, ${R.n} grilles, lancée il y a ${R.dur} jours sur chaque crypto (bougies ${tf}).</div><div class="progres"><div id="barreC"></div></div>`;
+  const lignes=[]; let demo=false;
+  for(let k=0;k<TOUTES.length;k++){
+    const sym=TOUTES[k];
+    let b=mode==="live"?await charger(sym,tf,nb):null;
+    if(!b||b.length<nb*0.8){ if(mode==="live") continue; b=genererDemo(nb,ms); demo=true; }
+    const s=simGrille(b,R);
+    let vol=0; for(let i=1;i<b.length;i++) vol+=Math.abs(Math.log(b[i].c/b[i-1].c)); vol=vol/(b.length-1)*Math.sqrt(JOUR/ms);
+    lignes.push({sym,s,vol});
+    $("barreC").style.width=((k+1)/TOUTES.length*100)+"%"; await pause(0);
+  }
+  lignes.sort((a,b)=>b.s.res-a.s.res);
+  const m=lignes[0];
+  $("resCorps").innerHTML=(demo?`<div class="verdict neutre" style="margin:0 0 10px">Prix réels indisponibles : marché simulé (sans valeur).</div>`:"")+
+    `<table><tr><th>Crypto</th><th>Garder</th><th>Grille</th><th>Encaissé</th><th>Chute</th></tr>`+
+    lignes.map(l=>`<tr><td><b>${nomSym(l.sym)}</b><br><span class="mut" style="font-size:11px">${(l.vol*100).toFixed(1)} %/j</span></td><td class="${l.s.holdRes>=0?"pos":"neg"}">${pct(l.s.holdRes)}</td><td class="${l.s.res>=0?"pos":"neg"}">${pct(l.s.res)}</td><td>${usd(l.s.encaisse)}</td><td class="neg">${(l.s.dd*100).toFixed(0)} %</td></tr>`).join("")+`</table>`+
+    `<div class="note">« %/j » = agitation moyenne du prix par jour. Les cryptos les plus agitées encaissent plus d'allers-retours… mais leurs chutes sont aussi plus violentes : regarde la colonne « Chute ». Un bon classement sur une seule période peut être de la chance : vérifie avec 🔬.</div>`;
+  $("resBoutonsF").innerHTML='<button class="second" id="btnFermerRes2">Fermer</button>'+(m?`<button class="principal" id="btnChoisir">Voir ${nomSym(m.sym)}</button>`:"");
+  $("btnFermerRes2").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+  if(m) $("btnChoisir").onclick=()=>{ R.sym=m.sym; sauver(); $("feuilleRes").classList.remove("ouverte"); lancer(); };
+}
+$("btnComp").onclick=comparer;
+
 document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
 window.addEventListener("resize",()=>S&&afficher());
 lancer();
