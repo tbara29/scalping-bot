@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Bot Long terme — Simulation</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#141a22; --card2:#1b232d; --line:#26303c;
+    --txt:#e8edf3; --mut:#8a97a6; --vert:#22c55e; --rouge:#ef4444;
+    --jaune:#f5b70a; --bleu:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px)}
+  a{color:inherit}
+  .onglets{display:flex;background:var(--card2);border-radius:12px;padding:4px;margin-bottom:12px}
+  .onglets a{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;color:var(--mut)}
+  .onglets a.actif{background:var(--card);color:var(--txt);box-shadow:0 1px 3px #0006}
+  .bandeau{background:#2a2108;color:var(--jaune);border:1px solid #4a3a0c;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;text-align:center}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;flex-wrap:wrap}
+  .paire{font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.4px}
+  .prix{font-size:26px;white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .statut{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--card2);white-space:nowrap}
+  .pastille{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+  .live .pastille{background:var(--vert);box-shadow:0 0 0 3px #22c55e33}
+  .demo .pastille{background:var(--jaune)}
+  .carte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  h2{font-size:13px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .signal{font-size:22px;font-weight:800;margin-bottom:4px}
+  .pos{color:var(--vert)} .neg{color:var(--rouge)} .mut{color:var(--mut)}
+  .sub{font-size:13.5px;color:var(--mut)}
+  .grille{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat .lib{font-size:12px;color:var(--mut)}
+  .stat .val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .comp{display:grid;grid-template-columns:1.3fr 1fr 1fr;font-variant-numeric:tabular-nums;font-size:14px}
+  .comp div{padding:8px 0;border-top:1px solid var(--line)}
+  .comp .h{color:var(--mut);font-size:12px;font-weight:600;border-top:0;padding-top:0}
+  .comp div:nth-child(3n+2),.comp div:nth-child(3n){text-align:right}
+  canvas{width:100%;height:230px;display:block}
+  .legende{display:flex;gap:12px;font-size:11.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+  .legende i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  th{color:var(--mut);font-weight:600;text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);font-size:12px}
+  td{text-align:right;padding:7px 4px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  .actions{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:8px}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px;color:#fff;cursor:pointer}
+  .principal{flex:1;background:var(--bleu);font-size:16px}
+  .second{background:var(--card2);border:1px solid var(--line);min-width:52px}
+  .feuille{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:10}
+  .feuille.ouverte{display:flex}
+  .panneau{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
+  .panneau h3{font-size:18px;margin-bottom:6px}
+  .panneau h4{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 4px}
+  .champ{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);gap:10px}
+  .champ label{font-size:14px} .champ small{display:block;color:var(--mut);font-size:12px}
+  .champ input,.champ select{width:110px;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;text-align:right}
+  .panneau .boutons{display:flex;gap:10px;margin-top:16px}
+  .panneau .boutons button{flex:1}
+  .ligne{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;gap:10px}
+  .verdict{margin-top:12px;padding:12px;border-radius:10px;font-size:14px;font-weight:600}
+  .verdict.neg{background:#3a1212;color:#fca5a5} .verdict.pos{background:#0f2e1a;color:#86efac} .verdict.neutre{background:#2a2108;color:var(--jaune)}
+  .note{font-size:12.5px;color:var(--mut);margin-top:10px}
+  .progres{height:8px;background:var(--card2);border-radius:4px;overflow:hidden;margin:12px 0}
+  .progres div{height:100%;background:var(--bleu);width:0;transition:width .2s}
+  .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-120px);background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;transition:transform .3s;z-index:20;white-space:nowrap}
+  .toast.vu{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<nav class="onglets"><a href="index.html">Court terme</a><a class="actif" href="long-terme.html">Long terme</a></nav>
+<div class="bandeau">SIMULATION sur l'historique — aucun ordre réel. Les résultats passés ne garantissent rien.</div>
+
+<header>
+  <div>
+    <div class="paire" id="paire">BTC / USDT · journalier</div>
+    <div class="prix" id="prix">—</div>
+  </div>
+  <div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Chargement…</span></div>
+</header>
+
+<div class="carte">
+  <h2>Signal du jour</h2>
+  <div class="signal" id="signal">—</div>
+  <div class="sub" id="signalSub">&nbsp;</div>
+</div>
+
+<div class="carte">
+  <h2 id="titreComp">Bot vs garder sans rien faire</h2>
+  <div class="comp" id="comp"></div>
+  <div class="note" id="noteComp"></div>
+</div>
+
+<div class="carte">
+  <canvas id="graph"></canvas>
+  <div class="legende">
+    <span><i style="background:var(--vert)"></i>Bot</span>
+    <span><i style="background:#8a97a6"></i>Acheter et garder</span>
+    <span><i style="background:#22c55e33;height:10px"></i>Périodes investies</span>
+    <span>(échelle logarithmique)</span>
+  </div>
+</div>
+
+<div class="carte">
+  <h2>Année par année</h2>
+  <table id="annees"></table>
+</div>
+
+<div class="actions">
+  <button class="second" id="btnReglages" aria-label="Réglages">⚙️</button>
+  <button class="principal" id="btnOptim">🔬 Vérifier sur une période inconnue</button>
+</div>
+
+<div class="feuille" id="feuilleReglages">
+  <div class="panneau">
+    <h3>Réglages</h3>
+    <h4>Placement</h4>
+    <div class="champ"><label>Crypto</label><select id="r_sym"><option value="BTCUSDT">Bitcoin (BTC)</option><option value="ETHUSDT">Ethereum (ETH)</option></select></div>
+    <div class="champ"><label>Capital de départ<small>$</small></label><input type="number" id="r_capital" step="50"></div>
+    <div class="champ"><label>Versement mensuel<small>$ ajoutés chaque mois (0 = aucun)</small></label><input type="number" id="r_mensuel" step="10"></div>
+    <div class="champ"><label>Frais par ordre<small>%</small></label><input type="number" id="r_frais" step="0.01"></div>
+    <h4>Stratégie</h4>
+    <div class="champ"><label>Moyenne mobile<small>nombre de jours</small></label><input type="number" id="r_N" step="10"></div>
+    <div class="champ"><label>Marge anti-faux signaux<small>% au-dessus / au-dessous de la moyenne</small></label><input type="number" id="r_marge" step="0.5"></div>
+    <div class="boutons">
+      <button class="second" id="btnFermerR">Annuler</button>
+      <button class="principal" id="btnSauverR">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="feuille" id="feuilleRes">
+  <div class="panneau">
+    <h3>Vérification sur période inconnue</h3>
+    <div id="resCorps"></div>
+    <div class="boutons" id="resBoutons"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const JOUR=86400000;
+const DEFAUT={sym:"BTCUSDT", capital:1000, mensuel:0, frais:0.1, N:100, marge:2};
+let R={...DEFAUT};
+try{ const s=JSON.parse(localStorage.getItem("longterme_v1")); if(s) R={...DEFAUT,...s}; }catch(e){}
+const sauver=()=>{ try{ localStorage.setItem("longterme_v1",JSON.stringify(R)); }catch(e){} };
+
+const $=id=>document.getElementById(id);
+const pct=v=>(v>=0?"+":"")+(v*100).toFixed(1)+" %";
+const usd=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:0})+" $";
+const date=t=>new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"});
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+function toast(m){ const e=$("toast"); e.textContent=m; e.classList.add("vu"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("vu"),2600); }
+
+/* ---------------- Données journalières (Binance, depuis 2017) ---------------- */
+const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
+async function paquet(sym, debut){
+  for(const s of SOURCES){
+    try{
+      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),10000);
+      const r=await fetch(`${s}/api/v3/klines?symbol=${sym}&interval=1d&limit=1000&startTime=${debut}`,{signal:ctl.signal});
+      clearTimeout(to); if(!r.ok) continue;
+      return (await r.json()).map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4]}));
+    }catch(e){}
+  }
+  return null;
+}
+async function chargerTout(sym){
+  let out=[], debut=Date.UTC(2017,7,1);
+  for(let n=0;n<10;n++){
+    const p=await paquet(sym, debut);
+    if(!p) return out.length?out:null;
+    out=out.concat(p);
+    if(p.length<1000) break;
+    debut=p[p.length-1].t+1;
+  }
+  return out;
+}
+// Démo : marché simulé avec des cycles haussiers/baissiers (aucune valeur prédictive)
+function genererDemo(){
+  let g=12345; const al=()=>(g=(g*16807)%2147483647)/2147483647, ga=()=>Math.sqrt(-2*Math.log(al()||1e-9))*Math.cos(2*Math.PI*al());
+  const out=[]; let t=Date.UTC(2017,7,17), c=4300, d=0.002;
+  while(t<Date.now()){
+    if(al()<0.006) d=(al()-0.48)*0.004;
+    const o=c; c=o*Math.exp(d+ga()*0.03);
+    out.push({t,o,c,h:Math.max(o,c)*1.01,l:Math.min(o,c)*0.99}); t+=JOUR;
+  }
+  return out;
+}
+
+/* ---------------- Moyenne mobile ---------------- */
+function sma(b,n){
+  const out=new Float64Array(b.length).fill(NaN); let s=0;
+  for(let i=0;i<b.length;i++){ s+=b[i].c; if(i>=n) s-=b[i-n].c; if(i>=n-1) out[i]=s/n; }
+  return out;
+}
+
+/* ---------------- Simulation ----------------
+   Décision à la clôture du jour i, exécution à l'ouverture du jour i+1.
+   En position : 100 % en crypto. Hors position : 100 % en dollars (USDT).
+   Versements mensuels : ajoutés le 1er jour de chaque mois, investis seulement si le bot est en position. */
+function simuler(b, mm, p, de, a, opts={}){
+  const f=p.frais/100, m=p.marge/100, mensuel=opts.mensuel??p.mensuel, capital=opts.capital??p.capital, toujours=!!opts.toujours;
+  let cash=capital, qte=0, enPos=false, ordre=toujours?1:0, mois=-1, verse=capital, trades=0;
+  const eq=new Float64Array(a-de), investi=new Uint8Array(a-de), entrees=[];
+  for(let i=de;i<a;i++){
+    const k=b[i], mo=new Date(k.t).getUTCMonth();
+    if(ordre===1 && !enPos){ qte+=cash*(1-f)/k.o; cash=0; enPos=true; trades++; entrees.push({t:k.t,type:"achat",prix:k.o}); }
+    else if(ordre===-1 && enPos){ cash+=qte*k.o*(1-f); qte=0; enPos=false; trades++; entrees.push({t:k.t,type:"vente",prix:k.o}); }
+    ordre=0;
+    if(mo!==mois){ if(mois!==-1 && mensuel>0){ cash+=mensuel; verse+=mensuel; if(enPos){ qte+=cash*(1-f)/k.o; cash=0; } } mois=mo; }
+    if(!toujours){
+      const x=k.c, s=mm[i];
+      if(!isNaN(s)){
+        if(!enPos && x>s*(1+m)) ordre=1;
+        else if(enPos && x<s*(1-m)) ordre=-1;
+      }
+    }
+    eq[i-de]=cash+qte*k.c; investi[i-de]=enPos?1:0;
+  }
+  return {eq, investi, verse, final:eq[eq.length-1], trades, entrees, enPos, ordre};
+}
+// Indicateurs sur un indice sans versements (pour comparer proprement)
+function stats(eq, b, de){
+  const ans=(b[de+eq.length-1].t-b[de].t)/(365.25*JOUR);
+  let pic=eq[0], dd=0; for(const v of eq){ pic=Math.max(pic,v); dd=Math.min(dd,v/pic-1); }
+  return {total:eq[eq.length-1]/eq[0]-1, annuel:Math.pow(eq[eq.length-1]/eq[0],1/ans)-1, dd};
+}
+
+/* ---------------- État ---------------- */
+let mode=null, B=[], MM=null, D0=0;
+async function charger(){
+  $("statutTxt").textContent="Chargement…";
+  const d=await chargerTout(R.sym);
+  if(d && d.length>300){ mode="live"; B=d; } else { mode="demo"; B=genererDemo(); }
+  $("statut").className="statut "+mode;
+  $("statutTxt").textContent= mode==="live" ? "Prix réels Binance" : "Mode démo (marché simulé)";
+  $("paire").textContent=(R.sym==="BTCUSDT"?"BTC":"ETH")+" / USDT · journalier";
+  calculer();
+}
+function calculer(){
+  MM=sma(B,R.N);
+  D0=Math.max(R.N, 0);                                   // on démarre quand la moyenne existe
+  const bot=simuler(B,MM,R,D0,B.length);
+  const hold=simuler(B,MM,R,D0,B.length,{toujours:true});
+  const botI=simuler(B,MM,R,D0,B.length,{mensuel:0,capital:1});
+  const holdI=simuler(B,MM,R,D0,B.length,{mensuel:0,capital:1,toujours:true});
+  const sb=stats(botI.eq,B,D0), sh=stats(holdI.eq,B,D0);
+  const der=B[B.length-1];
+
+  $("prix").textContent=der.c.toLocaleString("fr-FR",{maximumFractionDigits:2})+" $";
+
+  // Signal du jour
+  const s=MM[B.length-1], ecart=der.c/s-1, m=R.marge/100;
+  const dernierMvt=bot.entrees[bot.entrees.length-1];
+  let txt, cls, sub;
+  if(bot.ordre===1){ txt="▲ Signal d'achat"; cls="pos"; sub=`Le prix vient de passer ${pct(m)} au-dessus de sa moyenne ${R.N} jours : le bot achèterait à l'ouverture de demain.`; }
+  else if(bot.ordre===-1){ txt="▼ Signal de vente"; cls="neg"; sub=`Le prix vient de passer ${pct(-m)} sous sa moyenne ${R.N} jours : le bot vendrait à l'ouverture de demain.`; }
+  else if(bot.enPos){ txt="Investi — on garde"; cls="pos"; sub=`Le bot est en ${R.sym.slice(0,3)} depuis le ${dernierMvt?date(dernierMvt.t):"début"}. Prix ${pct(ecart)} par rapport à la moyenne ${R.N} jours (moyenne : ${usd(s)}). Il vend si le prix passe sous ${usd(s*(1-m))}.`; }
+  else { txt="À l'abri en dollars"; cls="neg"; sub=`Le bot est sorti le ${dernierMvt?date(dernierMvt.t):"début"}. Prix ${pct(ecart)} par rapport à la moyenne ${R.N} jours. Il rachète si le prix dépasse ${usd(s*(1+m))}.`; }
+  $("signal").textContent=txt; $("signal").className="signal "+cls; $("signalSub").textContent=sub;
+
+  // Comparaison
+  const C=(a,b,c,ca="",cb="")=>`<div>${a}</div><div class="${ca}">${b}</div><div class="${cb}">${c}</div>`;
+  $("titreComp").textContent=`Bot vs acheter et garder · depuis ${date(B[D0].t)}`;
+  $("comp").innerHTML=
+    '<div class="h"></div><div class="h">Bot</div><div class="h">Garder</div>'+
+    C("Versé au total", usd(bot.verse), usd(hold.verse))+
+    C("Valeur aujourd'hui", usd(bot.final), usd(hold.final), bot.final>=hold.final?"pos":"", hold.final>bot.final?"pos":"")+
+    C("Gain moyen par an", pct(sb.annuel), pct(sh.annuel))+
+    C("Pire chute", (sb.dd*100).toFixed(0)+" %", (sh.dd*100).toFixed(0)+" %", "neg","neg")+
+    C("Ordres passés", bot.trades, 1)+
+    C("Temps investi", Math.round(bot.investi.reduce((a,b)=>a+b,0)/bot.investi.length*100)+" %", "100 %");
+  $("noteComp").textContent = `Moyenne ${R.N} jours, marge ${R.marge} %, frais ${R.frais} % par ordre`+(R.mensuel>0?`, ${R.mensuel} $ versés chaque mois.`:".")+
+    " « Pire chute » = la plus grosse baisse entre un sommet et un creux : c'est ce que tu aurais dû supporter sans paniquer.";
+
+  // Année par année
+  const ans={};
+  for(let i=0;i<botI.eq.length;i++){
+    const y=new Date(B[D0+i].t).getUTCFullYear();
+    if(!ans[y]) ans[y]={b0:i?botI.eq[i-1]:botI.eq[0], h0:i?holdI.eq[i-1]:holdI.eq[0]};
+    ans[y].b1=botI.eq[i]; ans[y].h1=holdI.eq[i];
+  }
+  $("annees").innerHTML="<tr><th>Année</th><th>Bot</th><th>Garder</th></tr>"+
+    Object.keys(ans).map(y=>{ const a=ans[y], rb=a.b1/a.b0-1, rh=a.h1/a.h0-1;
+      return `<tr><td>${y}${+y===new Date().getUTCFullYear()?" *":""}</td><td class="${rb>=0?"pos":"neg"}">${pct(rb)}</td><td class="${rh>=0?"pos":"neg"}">${pct(rh)}</td></tr>`; }).join("")+
+    `<tr><td colspan="3" class="mut" style="text-align:left;font-size:12px">* année en cours</td></tr>`;
+
+  dessiner(bot, hold);
+}
+
+function dessiner(bot, hold){
+  const cv=$("graph"), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const x=cv.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
+  const n=bot.eq.length; if(n<2) return;
+  let mn=Infinity,mx=-Infinity;
+  for(let i=0;i<n;i++){ mn=Math.min(mn,bot.eq[i],hold.eq[i]); mx=Math.max(mx,bot.eq[i],hold.eq[i]); }
+  mn=Math.max(mn,1); const lmn=Math.log(mn)-0.1, lmx=Math.log(mx)+0.1, Wg=W-46;
+  const gx=i=>i/(n-1)*Wg, gy=v=>H-14-(Math.log(Math.max(v,1))-lmn)/(lmx-lmn)*(H-20);
+  // périodes investies
+  x.fillStyle="#22c55e1f";
+  for(let i=0;i<n;){ if(bot.investi[i]){ let j=i; while(j<n&&bot.investi[j]) j++; x.fillRect(gx(i),0,gx(j-1)-gx(i)+1,H-14); i=j; } else i++; }
+  // grille
+  x.strokeStyle="#26303c"; x.fillStyle="#8a97a6"; x.font="10px sans-serif"; x.lineWidth=1;
+  for(let k=0;k<=3;k++){ const v=Math.exp(lmn+(lmx-lmn)*k/3), y=gy(v); x.beginPath(); x.moveTo(0,y); x.lineTo(Wg,y); x.stroke();
+    x.fillText(v>=1e6?(v/1e6).toFixed(1)+"M":v>=1e3?Math.round(v/1e3)+"k":Math.round(v), Wg+4, Math.max(10,Math.min(H-16,y+3))); }
+  let annee=null;
+  for(let i=0;i<n;i++){ const y=new Date(B[D0+i].t).getUTCFullYear(); if(y!==annee){ annee=y; if(i>0 && y%2===0) x.fillText(String(y).slice(2).padStart(4,"'"), gx(i)-8, H-2); } }
+  const ligne=(arr,c,w)=>{ x.strokeStyle=c; x.lineWidth=w; x.beginPath(); for(let i=0;i<n;i++){ i?x.lineTo(gx(i),gy(arr[i])):x.moveTo(gx(i),gy(arr[i])); } x.stroke(); };
+  ligne(hold.eq,"#8a97a6",1.5);
+  ligne(bot.eq,"#22c55e",2);
+}
+
+/* ---------------- 🔬 Vérification : apprentissage jusqu'à fin 2021, test depuis 2022 ---------------- */
+const GRILLE={N:[20,30,50,75,100,150,200], marge:[0,1,2,3,5]};
+let meilleur=null;
+async function verifier(){
+  $("feuilleRes").classList.add("ouverte");
+  $("resBoutons").innerHTML='<button class="second" id="btnFermerRes">Fermer</button>';
+  $("btnFermerRes").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+  const coupe=B.findIndex(k=>k.t>=Date.UTC(2022,0,1));
+  if(coupe<0){ $("resCorps").innerHTML="Pas assez d'historique."; return; }
+  const debut=200;                                        // même départ pour tous (la moyenne 200 j doit exister)
+  $("resCorps").innerHTML=`<div class="note" style="margin:0">Teste ${GRILLE.N.length*GRILLE.marge.length} réglages. On choisit le meilleur sur <b>${date(B[debut].t)} → fin 2021</b>, puis on regarde ce qu'il aurait donné <b>depuis le 1er janvier 2022</b>, sans rien changer.</div><div class="progres"><div id="barre"></div></div>`;
+  await pause(30);
+  const res=[]; let k=0;
+  const holdApp=stats(simuler(B,MM,R,debut,coupe,{capital:1,mensuel:0,toujours:true}).eq,B,debut);
+  const holdTest=stats(simuler(B,MM,R,coupe,B.length,{capital:1,mensuel:0,toujours:true}).eq,B,coupe);
+  for(const N of GRILLE.N){
+    const mm=sma(B,N);
+    for(const marge of GRILLE.marge){
+      const p={...R,N,marge};
+      const app=stats(simuler(B,mm,p,debut,coupe,{capital:1,mensuel:0}).eq,B,debut);
+      const test=stats(simuler(B,mm,p,coupe,B.length,{capital:1,mensuel:0}).eq,B,coupe);
+      res.push({N,marge,app,test});
+      $("barre").style.width=(++k/(GRILLE.N.length*GRILLE.marge.length)*100)+"%";
+    }
+    await pause(0);
+  }
+  res.sort((a,b)=>b.app.total-a.app.total);
+  const m=meilleur=res[0];
+  const battuTest=res.filter(r=>r.test.total>holdTest.total).length;
+  const ddMieux=res.filter(r=>r.test.dd>holdTest.dd).length;
+  let v, cls;
+  if(m.test.total>holdTest.total && m.test.dd>holdTest.dd){ v=`Sur la période inconnue (depuis 2022), le meilleur réglage a fait MIEUX que garder (${pct(m.test.total)} contre ${pct(holdTest.total)}) avec une pire chute plus faible (${(m.test.dd*100).toFixed(0)} % contre ${(holdTest.dd*100).toFixed(0)} %). C'est un vrai signe positif — mais rien ne garantit que ça continue.`; cls="pos"; }
+  else if(m.test.dd>holdTest.dd){ v=`Sur la période inconnue, le bot a gagné MOINS que garder (${pct(m.test.total)} contre ${pct(holdTest.total)}) mais a ${(m.test.dd-holdTest.dd)>0.15?"beaucoup":"un peu"} mieux protégé dans les chutes (${(m.test.dd*100).toFixed(0)} % contre ${(holdTest.dd*100).toFixed(0)} %). C'est son rôle : moins de gain, moins de risque.`; cls="neutre"; }
+  else { v=`Sur la période inconnue, le meilleur réglage n'a fait mieux ni en gain ni en protection. Pas d'avantage démontré.`; cls="neg"; }
+  const tr=r=>`<tr><td>${r.N} j · ${r.marge} %</td><td class="${r.app.total>=0?"pos":"neg"}">${pct(r.app.total)}</td><td class="${r.test.total>=0?"pos":"neg"}">${pct(r.test.total)}</td><td class="neg">${(r.test.dd*100).toFixed(0)} %</td></tr>`;
+  $("resCorps").innerHTML=
+    (mode==="demo"?`<div class="verdict neutre" style="margin:0 0 10px">Prix réels indisponibles : test sur marché simulé (sans valeur).</div>`:"")+
+    `<div class="ligne"><span>Garder — apprentissage</span><b>${pct(holdApp.total)} · chute ${(holdApp.dd*100).toFixed(0)} %</b></div>`+
+    `<div class="ligne"><span>Garder — depuis 2022</span><b>${pct(holdTest.total)} · chute ${(holdTest.dd*100).toFixed(0)} %</b></div>`+
+    `<div class="ligne"><span>Réglages qui battent « garder » depuis 2022</span><b>${battuTest} / ${res.length}</b></div>`+
+    `<div class="ligne"><span>Réglages qui chutent moins depuis 2022</span><b>${ddMieux} / ${res.length}</b></div>`+
+    `<div class="verdict ${cls}">${v}</div>`+
+    `<h4 style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 4px">Les 8 meilleurs de l'apprentissage</h4>`+
+    `<table><tr><th>Réglage</th><th>Appr.</th><th>Depuis 2022</th><th>Chute</th></tr>${res.slice(0,8).map(tr).join("")}</table>`+
+    `<div class="note">Seules les deux dernières colonnes comptent : c'est ce qui serait arrivé en suivant le bot à partir de 2022 avec ces réglages.</div>`;
+  $("resBoutons").innerHTML='<button class="second" id="btnFermerRes">Fermer</button><button class="principal" id="btnAppliquer">Utiliser le n°1</button>';
+  $("btnFermerRes").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+  $("btnAppliquer").onclick=()=>{ R.N=meilleur.N; R.marge=meilleur.marge; sauver(); calculer(); $("feuilleRes").classList.remove("ouverte"); toast(`Réglage ${R.N} j · ${R.marge} % appliqué`); };
+}
+
+/* ---------------- Boutons ---------------- */
+$("btnOptim").onclick=verifier;
+$("btnReglages").onclick=()=>{ for(const k in DEFAUT) $("r_"+k).value=R[k]; $("feuilleReglages").classList.add("ouverte"); };
+$("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
+$("btnSauverR").onclick=()=>{
+  const ancien=R.sym;
+  for(const k in DEFAUT){ const el=$("r_"+k);
+    if(el.tagName==="SELECT") R[k]=el.value;
+    else { const v=parseFloat(el.value); if(isFinite(v)&&v>=0) R[k]=v; } }
+  R.N=Math.max(5,Math.round(R.N)); R.capital=Math.max(1,R.capital);
+  sauver(); $("feuilleReglages").classList.remove("ouverte");
+  if(R.sym!==ancien) charger(); else calculer();
+  toast("Réglages enregistrés");
+};
+document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
+window.addEventListener("resize",()=>B.length&&calculer());
+charger();
+})();
+</script>
+</body>
+</html>

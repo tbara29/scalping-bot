@@ -14,6 +14,9 @@
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
   body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px)}
+  .onglets{display:flex;background:var(--card2);border-radius:12px;padding:4px;margin-bottom:12px}
+  .onglets a{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;color:var(--mut)}
+  .onglets a.actif{background:var(--card);color:var(--txt);box-shadow:0 1px 3px #0006}
   .bandeau{background:#2a2108;color:var(--jaune);border:1px solid #4a3a0c;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;text-align:center}
   header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px}
   .paire{font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.4px}
@@ -79,6 +82,7 @@
 </head>
 <body>
 
+<nav class="onglets"><a class="actif" href="index.html">Court terme</a><a href="long-terme.html">Long terme</a></nav>
 <div class="bandeau">SIMULATION — argent virtuel uniquement, aucun ordre réel</div>
 
 <header>

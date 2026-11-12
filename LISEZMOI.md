@@ -1,5 +1,13 @@
 # Trend Bot — simulation uniquement
 
+## Mode Long terme : https://tbara29.github.io/scalping-bot/long-terme.html
+- Bougies journalières, historique complet depuis 2017 (BTC ou ETH)
+- Investi quand le prix est au-dessus de sa moyenne mobile (+ marge), à l'abri en dollars sinon
+- Versement mensuel optionnel (épargne régulière)
+- Comparaison avec « acheter et garder » : gain annuel, pire chute, année par année
+- 🔬 choisit le réglage sur 2018-2021 puis le vérifie depuis 2022 (période jamais vue)
+- « Signal du jour » : ce que le bot ferait aujourd'hui
+
 ## Interface mobile (v3) : https://tbara29.github.io/scalping-bot/
 - Suit la tendance à la hausse ET à la baisse (vente à découvert simulée, sans effet de levier)
 - Signal : pression acheteurs/vendeurs (part des achats « au marché » dans le volume Binance) + moyenne de tendance
