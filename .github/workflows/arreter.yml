@@ -1,0 +1,25 @@
+name: Arrêter un bot grille
+on:
+  workflow_dispatch:
+    inputs:
+      nom:
+        description: "Nom du bot à arrêter"
+        default: "bot1"
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: etat-des-bots
+  cancel-in-progress: false
+jobs:
+  arreter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NOM: ${{ inputs.nom }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash cloud/lire_etat.sh
+      - run: python3 cloud/bot_grille.py arreter etat/bots.json --nom "$NOM"
+      - run: bash cloud/sauver_etat.sh

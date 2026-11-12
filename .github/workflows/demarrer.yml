@@ -1,0 +1,56 @@
+name: Démarrer un bot grille
+on:
+  workflow_dispatch:
+    inputs:
+      nom:
+        description: "Nom du bot (le même nom remplace l'ancien)"
+        default: "bot1"
+        required: true
+      crypto:
+        description: "Crypto"
+        type: choice
+        default: SOLUSDT
+        options: [BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, BNBUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, LINKUSDT, SUIUSDT, PEPEUSDT]
+      bas:
+        description: "Bas de la fourchette en % sous le prix actuel"
+        default: "10"
+        required: true
+      haut:
+        description: "Haut de la fourchette en % au-dessus du prix actuel"
+        default: "10"
+        required: true
+      grilles:
+        description: "Nombre de grilles"
+        default: "30"
+        required: true
+      invest:
+        description: "Investissement virtuel ($)"
+        default: "100"
+        required: true
+      frais:
+        description: "Frais par ordre en % (Binance 0.1)"
+        default: "0.1"
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: etat-des-bots
+  cancel-in-progress: false
+jobs:
+  demarrer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NOM: ${{ inputs.nom }}
+      CRYPTO: ${{ inputs.crypto }}
+      BAS: ${{ inputs.bas }}
+      HAUT: ${{ inputs.haut }}
+      GRILLES: ${{ inputs.grilles }}
+      INVEST: ${{ inputs.invest }}
+      FRAIS: ${{ inputs.frais }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash cloud/lire_etat.sh
+      - run: python3 cloud/bot_grille.py demarrer etat/bots.json --nom "$NOM" --crypto "$CRYPTO" --bas "$BAS" --haut "$HAUT" --grilles "$GRILLES" --invest "$INVEST" --frais "$FRAIS"
+      - run: bash cloud/sauver_etat.sh

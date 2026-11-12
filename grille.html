@@ -88,6 +88,18 @@
   .puces{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
   .puces button{flex:0 0 auto;background:var(--card2);border:1px solid var(--line);padding:8px 12px;font-size:13px;border-radius:99px;color:var(--txt)}
   .puces button.on{border-color:var(--bleu);background:#16243a}
+  .lienBtn{flex:1;text-align:center;padding:12px;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-weight:700;text-decoration:none;color:var(--txt)}
+  .principalLien{background:var(--vert);color:#04210f;border:0}
+  .bot{border-top:1px solid var(--line);padding:12px 0}
+  .bot:first-child{border-top:0;padding-top:0}
+  .bot .tete{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .bot .chiffres{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;font-variant-numeric:tabular-nums}
+  .bot .chiffres div{font-size:12px;color:var(--mut)} .bot .chiffres b{display:block;font-size:16px;color:var(--txt)}
+  .bot canvas{height:60px;margin-top:8px}
+  .barreF{position:relative;height:8px;border-radius:4px;background:#3b82f633;margin:10px 0 2px}
+  .barreF i{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:#fff;transform:translateX(-2px)}
+  details summary{list-style:none} details summary::-webkit-details-marker{display:none}
+  details .note b{color:var(--txt)}
 </style>
 </head>
 <body>
@@ -102,6 +114,16 @@
   </div>
   <div class="badges"><div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Chargement…</span></div></div>
 </header>
+
+<div class="carte" id="carteCloud">
+  <h2>🤖 Mes bots 24h/24 (cloud)</h2>
+  <div id="cloudListe"><div class="etat">Chargement…</div></div>
+  <div class="boutons" style="display:flex;gap:8px;margin-top:12px">
+    <a class="lienBtn principalLien" href="https://github.com/tbara29/scalping-bot/actions/workflows/demarrer.yml">＋ Démarrer un bot</a>
+    <a class="lienBtn" href="https://github.com/tbara29/scalping-bot/actions/workflows/arreter.yml">Arrêter</a>
+  </div>
+  <div class="note">Ces bots tournent sur les serveurs de GitHub, même téléphone éteint. Ils vérifient le marché environ toutes les 5 minutes et rejouent chaque minute écoulée : aucun palier n'est raté. Simulation uniquement, aucun ordre réel.</div>
+</div>
 
 <div class="carte">
   <h2>Type de grille</h2>
@@ -130,6 +152,9 @@
     <div class="stat"><div class="lib">Pire chute</div><div class="val neg" id="vDD">—</div></div>
   </div>
   <div class="verdict" id="verdict" style="display:none"></div>
+  <details style="margin-top:12px"><summary style="font-weight:700;cursor:pointer">🤖 Faire tourner cette grille 24h/24</summary>
+    <div class="note" id="aideCloud"></div>
+  </details>
 </div>
 
 <div class="carte">
@@ -321,7 +346,7 @@ function afficher(){
     ["Stop-loss",R.sl>0?`${R.sl} % sous le bas`:"aucun"]
   ].map(([a,b])=>`<div class="ligne"><span>${a}</span><b style="text-align:right">${b}</b></div>`).join("")+
   (((Math.pow(S.haut/S.bas,1/R.n))-1)*100 < 2*R.frais ? `<div class="verdict neg">Écart entre grilles plus petit que les frais d'un aller-retour : chaque cycle perd de l'argent. Réduis le nombre de grilles.</div>`:"");
-  dessinerPrix(); dessinerVal();
+  dessinerPrix(); dessinerVal(); aideCloud();
 }
 function cadre(id){ const cv=$(id), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; cv.width=W*dpr; cv.height=H*dpr; const x=cv.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); return {x,W,H}; }
 function axes(x,W,H,mn,mx,gy,fmt){ x.strokeStyle="#26303c"; x.fillStyle="#8a97a6"; x.font="10px sans-serif"; x.lineWidth=1;
@@ -433,6 +458,52 @@ $("btnComp").onclick=comparer;
 document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
 window.addEventListener("resize",()=>S&&afficher());
 lancer();
+
+/* ---------------- 🤖 Bots cloud (état lu sur la branche « etat » du dépôt) ---------------- */
+const ETAT_URL="https://raw.githubusercontent.com/tbara29/scalping-bot/etat/etat/bots.json";
+const depuis=t=>{ const m=Math.round((Date.now()-t)/60000); return m<60?`il y a ${m} min`:m<1440?`il y a ${Math.round(m/60)} h`:`il y a ${Math.round(m/1440)} j`; };
+async function chargerCloud(){
+  const z=$("cloudListe");
+  let e=null;
+  try{ const r=await fetch(ETAT_URL+"?t="+Date.now(),{cache:"no-store"}); if(r.ok) e=await r.json(); }catch(err){}
+  if(!e || !e.bots || !Object.keys(e.bots).length){
+    z.innerHTML='<div class="etat">Aucun bot en ligne pour l\'instant. Appuie sur « ＋ Démarrer un bot » : sur GitHub, choisis « Run workflow », règle la crypto et la grille, puis valide.</div>'; return; }
+  const bots=Object.values(e.bots).sort((a,b)=>(b.actif-a.actif)||(b.debut-a.debut));
+  z.innerHTML=bots.map((b,k)=>{
+    const res=b.valeur/b.invest-1, hold=b.qte_garder*b.prix/b.invest-1;
+    const bas=b.paliers[0], haut=b.paliers[b.paliers.length-1], pos=Math.max(0,Math.min(100,(Math.log(b.prix)-Math.log(bas))/(Math.log(haut)-Math.log(bas))*100));
+    const j=(b.journal||[]).slice(-4).reverse().map(x=>`<div class="ligne" style="font-size:12.5px"><span>${new Date(x.t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} · ${x.type==="achat"?"Achat":"Vente"} à ${fp0(x.prix)}</span><b class="${x.type==="vente"?"pos":""}">${x.type==="vente"?(x.gain>=0?"+":"")+x.gain.toFixed(2)+" $":"−"+x.montant.toFixed(2)+" $ investis"}</b></div>`).join("");
+    return `<div class="bot">
+      <div class="tete"><b>${b.nom} · ${nomSym(b.crypto)}</b><span class="statut ${b.actif?"live":""}"><span class="pastille"></span>${b.actif?"En ligne":"Arrêté"}</span></div>
+      <div class="note" style="margin-top:4px">Depuis le ${date(b.debut)} · grille ${b.bas_pct} % / +${b.haut_pct} %, ${b.n} grilles · mis à jour ${depuis(b.dernier+60000)}${b.erreur?' · <span class="neg">erreur de prix</span>':""}</div>
+      <div class="chiffres">
+        <div>Valeur<b>${usd(b.valeur)}</b></div>
+        <div>Résultat<b class="${res>=0?"pos":"neg"}">${pct(res)}</b></div>
+        <div>Garder<b class="${hold>=0?"pos":"neg"}">${pct(hold)}</b></div>
+        <div>Encaissé<b class="pos">${usd(b.encaisse)}</b></div>
+        <div>Allers-retours<b>${b.cycles}</b></div>
+        <div>Prix<b>${fp0(b.prix)}</b></div>
+      </div>
+      <div class="barreF"><i style="left:${pos}%"></i></div>
+      <div class="note" style="margin-top:0;display:flex;justify-content:space-between"><span>${fp0(bas)}</span><span>position dans la fourchette</span><span>${fp0(haut)}</span></div>
+      <canvas id="spark${k}"></canvas>
+      ${j?`<div style="margin-top:6px">${j}</div>`:""}
+    </div>`;}).join("");
+  bots.forEach((b,k)=>{
+    const h=b.historique||[]; if(h.length<2) return;
+    const {x,W,H}=cadre("spark"+k); let mn=Infinity,mx=-Infinity; h.forEach(p=>{mn=Math.min(mn,p.v);mx=Math.max(mx,p.v);}); const pad=(mx-mn)*0.1||1; mn-=pad; mx+=pad;
+    const gy=v=>H-(v-mn)/(mx-mn)*H;
+    x.setLineDash([3,3]); x.strokeStyle="#8a97a6"; x.beginPath(); x.moveTo(0,gy(b.invest)); x.lineTo(W,gy(b.invest)); x.stroke(); x.setLineDash([]);
+    x.strokeStyle=b.valeur>=b.invest?"#22c55e":"#ef4444"; x.lineWidth=2; x.beginPath();
+    h.forEach((p,i)=>{ const X=i/(h.length-1)*W; i?x.lineTo(X,gy(p.v)):x.moveTo(X,gy(p.v)); }); x.stroke();
+  });
+}
+function aideCloud(){
+  $("aideCloud").innerHTML=`Ouvre <a href="https://github.com/tbara29/scalping-bot/actions/workflows/demarrer.yml" style="color:#7aa7f7">la page « Démarrer un bot »</a>, appuie sur <b>Run workflow</b> et entre :<br>
+  crypto <b>${R.sym}</b> · bas <b>${Math.abs(R.bas)}</b> · haut <b>${R.haut}</b> · grilles <b>${R.n}</b> · investissement <b>${R.invest}</b> · frais <b>${R.frais}</b>.<br>
+  La grille sera centrée sur le prix du moment où tu la lances. Elle apparaîtra dans « Mes bots 24h/24 » quelques minutes après.`;
+}
+chargerCloud(); setInterval(chargerCloud,60000);
 })();
 </script>
 </body>

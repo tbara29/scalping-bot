@@ -1,0 +1,21 @@
+name: Bots 24h-24 (toutes les 5 min)
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: etat-des-bots
+  cancel-in-progress: false
+jobs:
+  tourner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash cloud/lire_etat.sh
+      - run: python3 cloud/bot_grille.py tourner etat/bots.json
+      - run: bash cloud/sauver_etat.sh

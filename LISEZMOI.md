@@ -5,6 +5,11 @@
 - Simulation sur les vrais prix Binance : profit de grille encaissé, latent, comparaison avec « garder »
 - 🔬 relance la même grille à 12 dates différentes pour voir si le résultat dépend de la chance
 
+## Bots 24h/24 dans le cloud (GitHub Actions)
+- `cloud/bot_grille.py` : grid bot en simulation, rejoue chaque bougie de 1 min (aucun palier raté)
+- Workflows : « Démarrer un bot grille », « Arrêter un bot grille », « Bots 24h-24 » (toutes les 5 min)
+- L'état est sur la branche `etat` et s'affiche dans l'onglet Grille (« Mes bots 24h/24 »)
+
 ## Mode 1 min (Elliott + Fibonacci + RSI + EMA) : https://tbara29.github.io/scalping-bot/ultra.html
 - Script TradingView : tradingview_elliott_fibo.pine
 
