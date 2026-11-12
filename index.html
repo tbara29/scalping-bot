@@ -4,21 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0f14">
-<title>Scalping Bot — Simulation</title>
+<title>Trend Bot v3 — Simulation</title>
 <style>
   :root{
     --bg:#0b0f14; --card:#141a22; --card2:#1b232d; --line:#26303c;
     --txt:#e8edf3; --mut:#8a97a6; --vert:#22c55e; --rouge:#ef4444;
-    --jaune:#f5b70a; --bleu:#3b82f6; --violet:#a78bfa;
+    --jaune:#f5b70a; --bleu:#3b82f6;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
   body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px)}
   .bandeau{background:#2a2108;color:var(--jaune);border:1px solid #4a3a0c;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;text-align:center}
-  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px}
   .paire{font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.4px}
   .prix{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
   .var{font-size:13px;font-weight:600}
+  .badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .statut{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--card2);white-space:nowrap}
   .pastille{width:8px;height:8px;border-radius:50%;background:var(--mut)}
   .live .pastille{background:var(--vert);box-shadow:0 0 0 3px #22c55e33}
@@ -28,38 +29,50 @@
   .stat .lib{font-size:12px;color:var(--mut)}
   .stat .val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
   .grand .val{font-size:26px}
-  .pos{color:var(--vert)} .neg{color:var(--rouge)}
+  .pos{color:var(--vert)} .neg{color:var(--rouge)} .mut{color:var(--mut)}
   canvas{width:100%;height:210px;display:block}
   .legende{display:flex;gap:12px;font-size:11.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
   .legende i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
   h2{font-size:13px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .jauge{height:12px;border-radius:6px;background:var(--card2);overflow:hidden;display:flex;margin:8px 0 4px}
+  .jauge .a{background:var(--vert);transition:width .4s} .jauge .v{background:var(--rouge);flex:1}
+  .jl{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600}
+  .tend{margin-top:10px;font-size:14px}
   .etat{font-size:14px;color:var(--mut)}
   .position .ligne{display:flex;justify-content:space-between;padding:4px 0;font-variant-numeric:tabular-nums}
-  .barre{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--rouge),var(--card2) 43%,var(--card2) 57%,var(--vert));position:relative;margin:10px 0 4px}
-  .curseur{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:#fff;transform:translateX(-2px);transition:left .3s}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;letter-spacing:.4px}
+  .tag.long{background:#0f2e1a;color:var(--vert)} .tag.short{background:#3a1212;color:var(--rouge)}
   .trade{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
   .trade:first-child{border-top:0}
   .trade .r{font-size:12px;color:var(--mut)}
   .trade .p{font-weight:700;font-variant-numeric:tabular-nums}
   .vide{color:var(--mut);font-size:13.5px;text-align:center;padding:10px 0}
-  .actions{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:10px}
+  .actions{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:8px}
   button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px;color:#fff;cursor:pointer}
+  button:disabled{opacity:.5}
   .principal{flex:1;background:var(--vert);color:#04210f;font-size:16px}
   .principal.stop{background:var(--rouge);color:#fff}
-  .second{background:var(--card2);border:1px solid var(--line);min-width:52px}
+  .second{background:var(--card2);border:1px solid var(--line);min-width:50px}
   .feuille{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:10}
   .feuille.ouverte{display:flex}
-  .panneau{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:88vh;overflow:auto}
-  .panneau h3{font-size:18px;margin-bottom:14px}
-  .champ{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+  .panneau{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
+  .panneau h3{font-size:18px;margin-bottom:6px}
+  .panneau h4{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 4px}
+  .champ{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);gap:10px}
   .champ label{font-size:14px} .champ small{display:block;color:var(--mut);font-size:12px}
-  .champ input{width:92px;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;text-align:right}
+  .champ input,.champ select{width:110px;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;text-align:right}
   .panneau .boutons{display:flex;gap:10px;margin-top:16px}
   .panneau .boutons button{flex:1}
-  .res .ligne{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .res .ligne{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;gap:10px}
   .verdict{margin-top:12px;padding:12px;border-radius:10px;font-size:14px;font-weight:600}
-  .verdict.neg{background:#3a1212} .verdict.pos{background:#0f2e1a}
+  .verdict.neg{background:#3a1212} .verdict.pos{background:#0f2e1a} .verdict.neutre{background:#2a2108;color:var(--jaune)}
   .note{font-size:12.5px;color:var(--mut);margin-top:10px}
+  .progres{height:8px;background:var(--card2);border-radius:4px;overflow:hidden;margin:12px 0}
+  .progres div{height:100%;background:var(--bleu);width:0;transition:width .2s}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:6px}
+  th{color:var(--mut);font-weight:600;text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
   .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-120px);background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;transition:transform .3s;z-index:20;white-space:nowrap}
   .toast.vu{transform:translateX(-50%) translateY(0)}
 </style>
@@ -70,12 +83,22 @@
 
 <header>
   <div>
-    <div class="paire">BTC / USDT · 5 min</div>
+    <div class="paire" id="paire">BTC / USDT</div>
     <div class="prix" id="prix">—</div>
     <div class="var" id="var">&nbsp;</div>
   </div>
-  <div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Connexion…</span></div>
+  <div class="badges">
+    <div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Connexion…</span></div>
+    <div class="statut" id="fng" style="display:none"></div>
+  </div>
 </header>
+
+<div class="carte">
+  <h2>Marché</h2>
+  <div class="jl"><span class="pos" id="pAch">Acheteurs —</span><span class="neg" id="pVen">Vendeurs —</span></div>
+  <div class="jauge"><div class="a" id="jA" style="width:50%"></div><div class="v"></div></div>
+  <div class="tend" id="tend">Tendance : —</div>
+</div>
 
 <div class="carte">
   <div class="grille">
@@ -92,16 +115,14 @@
   <canvas id="graph"></canvas>
   <div class="legende">
     <span><i style="background:#e8edf3"></i>Prix</span>
-    <span><i style="background:var(--bleu)"></i>Moy. rapide</span>
-    <span><i style="background:var(--violet)"></i>Moy. lente</span>
-    <span><i style="background:var(--jaune)"></i>Tendance 3 h</span>
-    <span>▲ achat · ● vente</span>
+    <span><i style="background:var(--jaune)"></i>Tendance</span>
+    <span class="pos">▲ achat</span><span class="neg">▼ vente à découvert</span><span>● sortie</span>
   </div>
 </div>
 
 <div class="carte position">
   <h2>Position</h2>
-  <div id="position"><div class="etat">Aucune position — le bot attend un signal.</div></div>
+  <div id="position"><div class="etat">Bot arrêté. Appuie sur « Démarrer ».</div></div>
 </div>
 
 <div class="carte">
@@ -110,8 +131,9 @@
 </div>
 
 <div class="actions">
+  <button class="second" id="btnOptim" aria-label="Optimiseur">🔬</button>
   <button class="second" id="btnBacktest" aria-label="Backtest">📊</button>
-  <button class="principal" id="btnStart">Démarrer le bot</button>
+  <button class="principal" id="btnStart">Démarrer</button>
   <button class="second" id="btnReglages" aria-label="Réglages">⚙️</button>
 </div>
 
@@ -119,25 +141,33 @@
 <div class="feuille" id="feuilleReglages">
   <div class="panneau">
     <h3>Réglages</h3>
+    <h4>Général</h4>
+    <div class="champ"><label>Unité de temps<small>durée d'une bougie</small></label>
+      <select id="r_tf"><option value="15m">15 minutes</option><option value="1h">1 heure</option></select></div>
+    <div class="champ"><label>Sens<small>jouer la hausse, la baisse ou les deux</small></label>
+      <select id="r_sens"><option value="both">Hausse + baisse</option><option value="long">Hausse seulement</option></select></div>
     <div class="champ"><label>Capital de départ<small>USDT virtuels</small></label><input type="number" id="r_capital" step="10"></div>
-    <div class="champ"><label>Take-profit<small>% de gain pour encaisser</small></label><input type="number" id="r_tp" step="0.05"></div>
-    <div class="champ"><label>Stop-loss<small>% de perte pour couper</small></label><input type="number" id="r_sl" step="0.05"></div>
-    <div class="champ"><label>Durée max d'un trade<small>minutes</small></label><input type="number" id="r_duree" step="5"></div>
-    <div class="champ"><label>Perte max par jour<small>% — le bot s'arrête au-delà</small></label><input type="number" id="r_pj" step="0.5"></div>
     <div class="champ"><label>Frais par ordre<small>% (Binance ≈ 0,1)</small></label><input type="number" id="r_frais" step="0.01"></div>
+    <div class="champ"><label>Perte max par jour<small>% — arrêt jusqu'au lendemain</small></label><input type="number" id="r_pj" step="0.5"></div>
+    <h4>Stratégie</h4>
+    <div class="champ"><label>Moyenne de tendance<small>nombre de bougies</small></label><input type="number" id="r_L" step="10"></div>
+    <div class="champ"><label>Lissage de la pression<small>nombre de bougies</small></label><input type="number" id="r_N" step="1"></div>
+    <div class="champ"><label>Seuil de pression<small>écart à 50 % (0,04 = 54 %)</small></label><input type="number" id="r_s" step="0.01"></div>
+    <div class="champ"><label>Stop-loss<small>× volatilité moyenne (ATR)</small></label><input type="number" id="r_ksl" step="0.5"></div>
+    <div class="champ"><label>Take-profit<small>× volatilité moyenne (ATR)</small></label><input type="number" id="r_ktp" step="0.5"></div>
     <div class="boutons">
       <button class="second" id="btnFermerR">Annuler</button>
-      <button class="principal" id="btnSauverR">Enregistrer et réinitialiser</button>
+      <button class="principal" id="btnSauverR">Enregistrer</button>
     </div>
   </div>
 </div>
 
-<!-- Résultat backtest -->
-<div class="feuille" id="feuilleBacktest">
+<!-- Résultats -->
+<div class="feuille" id="feuilleRes">
   <div class="panneau res">
-    <h3>Test sur l'historique</h3>
-    <div id="resBacktest">Calcul…</div>
-    <div class="boutons"><button class="second" id="btnFermerB">Fermer</button></div>
+    <h3 id="resTitre">Résultat</h3>
+    <div id="resCorps">Calcul…</div>
+    <div class="boutons" id="resBoutons"><button class="second" id="btnFermerRes">Fermer</button></div>
   </div>
 </div>
 
@@ -147,38 +177,54 @@
 (() => {
 "use strict";
 
-/* ---------------- Réglages ---------------- */
-const DEFAUT = {capital:100, tp:1, sl:0.5, duree:120, pj:3, frais:0.1};
+/* =========================================================
+   RÉGLAGES
+   ========================================================= */
+const TFMS = {"15m":900000, "1h":3600000};
+const DEFAUT = {tf:"1h", sens:"both", capital:100, frais:0.1, pj:3, L:50, N:6, s:0.04, ksl:1.5, ktp:2};
 let R = {...DEFAUT};
-try { const s = JSON.parse(localStorage.getItem("scalp_reglages_v2")); if (s) R = {...DEFAUT, ...s}; } catch(e){}
-const cfg = () => ({
-  capital:R.capital, part:0.95, tp:R.tp/100, sl:R.sl/100, duree:R.duree,
-  frais:R.frais/100, glis:0.0002, pj:R.pj/100, pertesMax:4, pauseMin:60,
-  emaR:9, emaL:21, rsiP:14, rsiMax:65,
-  tend:36   // moyenne de tendance : 36 bougies de 5 min = 3 h
+try { const s = JSON.parse(localStorage.getItem("trendbot_v3")); if (s) R = {...DEFAUT, ...s}; } catch(e){}
+const sauver = () => { try{ localStorage.setItem("trendbot_v3", JSON.stringify(R)); }catch(e){} };
+const cfgDe = r => ({
+  tf:r.tf, ms:TFMS[r.tf], sens:r.sens, capital:r.capital, part:0.95,
+  frais:r.frais/100, glis:0.0002, pj:r.pj/100, pertesMax:4, pauseBougies:4,
+  L:r.L|0, N:r.N|0, s:r.s, ksl:r.ksl, ktp:r.ktp
 });
-const TF="5m", MS=300000;   // bougies de 5 minutes
 
-/* ---------------- Indicateurs ---------------- */
-function indicateurs(b, c){
-  const n=b.length, er=new Array(n), el=new Array(n), et=new Array(n), rsi=new Array(n), sig=new Array(n).fill(false);
-  const kr=2/(c.emaR+1), kl=2/(c.emaL+1), kt=2/(c.tend+1), a=1/c.rsiP;
-  let g=0,p=0;
+/* =========================================================
+   INDICATEURS
+   pression = part des achats « au marché » (taker buy) dans le volume
+   ========================================================= */
+function ema(arr, n){
+  const k=2/(n+1), out=new Float64Array(arr.length);
+  for(let i=0;i<arr.length;i++) out[i] = i ? arr[i]*k + out[i-1]*(1-k) : arr[i];
+  return out;
+}
+function baseInd(b){ // ne dépend pas des réglages : pression brute + ATR
+  const n=b.length, pr=new Float64Array(n), atr=new Float64Array(n), cl=new Float64Array(n);
   for(let i=0;i<n;i++){
-    const x=b[i].c;
-    er[i]= i? x*kr+er[i-1]*(1-kr) : x;
-    el[i]= i? x*kl+el[i-1]*(1-kl) : x;
-    et[i]= i? x*kt+et[i-1]*(1-kt) : x;
-    if(i){ const d=x-b[i-1].c; g=a*Math.max(d,0)+(1-a)*g; p=a*Math.max(-d,0)+(1-a)*p; }
-    rsi[i]=100-100/(1+g/(p||1e-12));
-    // Filtre de tendance : on n'achète que si le prix est au-dessus de la moyenne 3 h ET qu'elle monte
-    const tendanceOk = i>=c.tend && x>et[i] && et[i]>et[i-1];
-    if(i && er[i]>el[i] && er[i-1]<=el[i-1] && rsi[i]<c.rsiMax && tendanceOk) sig[i]=true;
+    const k=b[i]; cl[i]=k.c;
+    pr[i] = k.v>0 ? k.tb/k.v : 0.5;
+    const tr = i ? Math.max(k.h-k.l, Math.abs(k.h-b[i-1].c), Math.abs(k.l-b[i-1].c)) : k.h-k.l;
+    atr[i] = i ? (atr[i-1]*13 + tr)/14 : tr;
   }
-  return {er,el,et,rsi,sig};
+  return {pr, atr, cl};
+}
+function indicateurs(b, c, base){
+  base = base || baseInd(b);
+  const n=b.length, et=ema(base.cl, c.L), pe=ema(base.pr, c.N), sig=new Int8Array(n);
+  const debut=Math.max(c.L, c.N, 14)+1, haut=0.5+c.s, bas=0.5-c.s;
+  for(let i=debut;i<n;i++){
+    const x=b[i].c, hausse = x>et[i] && et[i]>et[i-1], baisse = x<et[i] && et[i]<et[i-1];
+    if(hausse && pe[i]>haut && pe[i-1]<=haut) sig[i]=1;
+    else if(c.sens==="both" && baisse && pe[i]<bas && pe[i-1]>=bas) sig[i]=-1;
+  }
+  return {et, pe, atr:base.atr, sig, debut};
 }
 
-/* ---------------- Moteur (identique au script Python) ---------------- */
+/* =========================================================
+   MOTEUR (long et short, sans effet de levier)
+   ========================================================= */
 class Moteur{
   constructor(c){ Object.assign(this,{c,capital:c.capital,pos:null,trades:[],jour:null,capJour:c.capital,
     pertes:0,pauseJusqua:0,bloque:false,fraisTot:0}); }
@@ -186,61 +232,88 @@ class Moteur{
     if(j!==this.jour){ this.jour=j; this.capJour=this.capital+(this.pos?this.pos.mise:0); this.bloque=false; } }
   enPause(t){ return this.bloque || t<this.pauseJusqua; }
   peutEntrer(t){ this.nouveauJour(t); return !this.pos && !this.enPause(t); }
-  entrer(t,prix){
-    const c=this.c, px=prix*(1+c.glis), mise=this.capital*c.part;
+  entrer(t, prix, dir, atr){
+    const c=this.c, px=prix*(1+dir*c.glis), mise=this.capital*c.part;
     this.fraisTot+=mise*c.frais; this.capital-=mise;
-    this.pos={t,prix:px,qte:mise*(1-c.frais)/px,mise,tp:px*(1+c.tp),sl:px*(1-c.sl)};
+    this.pos={t,dir,prix:px,qte:mise*(1-c.frais)/px,mise,
+      sl:px-dir*c.ksl*atr, tp:px+dir*c.ktp*atr};
   }
-  verifier(t,h,l,cl){
+  // Si stop et objectif sont touchés dans la même bougie, on suppose le pire (le stop)
+  verifier(k, tendance){
     const p=this.pos; if(!p) return null;
-    if(l<=p.sl) return this.sortir(t,p.sl,"Stop-loss");
-    if(h>=p.tp) return this.sortir(t,p.tp,"Take-profit");
-    if((t-p.t)/60000>=this.c.duree) return this.sortir(t,cl,"Durée max");
+    if(p.dir===1){
+      if(k.l<=p.sl) return this.sortir(k.t,p.sl,"Stop-loss");
+      if(k.h>=p.tp) return this.sortir(k.t,p.tp,"Objectif");
+      if(k.c<tendance) return this.sortir(k.t,k.c,"Fin de tendance");
+    } else {
+      if(k.h>=p.sl) return this.sortir(k.t,p.sl,"Stop-loss");
+      if(k.l<=p.tp) return this.sortir(k.t,p.tp,"Objectif");
+      if(k.c>tendance) return this.sortir(k.t,k.c,"Fin de tendance");
+    }
     return null;
   }
-  sortir(t,prix,raison){
-    const c=this.c,p=this.pos,px=prix*(1-c.glis),brut=p.qte*px,recu=brut*(1-c.frais);
-    this.fraisTot+=brut*c.frais; this.capital+=recu;
-    const tr={entree:p.t,sortie:t,raison,pe:p.prix,ps:px,pnl:recu-p.mise,capital:this.capital};
+  sortir(t, prix, raison){
+    const c=this.c, p=this.pos, px=prix*(1-p.dir*c.glis);
+    const fraisSortie=p.qte*px*c.frais;
+    const recu=p.mise*(1-c.frais) + p.dir*p.qte*(px-p.prix) - fraisSortie;
+    this.fraisTot+=fraisSortie; this.capital+=recu;
+    const tr={entree:p.t,sortie:t,dir:p.dir,raison,pe:p.prix,ps:px,pnl:recu-p.mise,capital:this.capital};
     this.trades.push(tr); this.pos=null;
     this.pertes = tr.pnl<0 ? this.pertes+1 : 0;
-    if(this.pertes>=c.pertesMax){ this.pauseJusqua=t+c.pauseMin*60000; this.pertes=0; }
+    if(this.pertes>=c.pertesMax){ this.pauseJusqua=t+c.pauseBougies*c.ms; this.pertes=0; }
     if(this.capital<=this.capJour*(1-c.pj)) this.bloque=true;
     return tr;
   }
-  // Traite la bougie i (déjà clôturée) : même logique que le backtest Python
-  etape(b,ind,i){
+  valeur(prix){
+    const p=this.pos; if(!p) return this.capital;
+    return this.capital + p.mise*(1-this.c.frais) + p.dir*p.qte*(prix-p.prix) - p.qte*prix*this.c.frais;
+  }
+  // Bougie i clôturée. Signal lu sur la bougie i-1, entrée à l'ouverture de i (pas de triche).
+  etape(b, ind, i){
     const k=b[i];
-    if(this.pos) return {sortie:this.verifier(k.t,k.h,k.l,k.c)};
-    if(ind.sig[i-1] && this.peutEntrer(k.t)){
-      this.entrer(k.t,k.o);
-      return {entree:true, sortie:this.verifier(k.t,k.h,k.l,k.c)};
+    if(this.pos) return {sortie:this.verifier(k, ind.et[i])};
+    const s=ind.sig[i-1];
+    if(s && this.peutEntrer(k.t)){
+      this.entrer(k.t, k.o, s, ind.atr[i-1]);
+      return {entree:s, sortie:this.verifier(k, ind.et[i])};
     }
     return {};
   }
 }
 
-/* ---------------- Données : Binance en direct, sinon démo ---------------- */
+function simuler(b, ind, c, de, a){
+  const m=new Moteur(c);
+  for(let i=Math.max(de, ind.debut+1); i<a; i++) m.etape(b, ind, i);
+  if(m.pos){ const d=b[a-1]; m.sortir(d.t, d.c, "Fin du test"); }
+  const n=m.trades.length, g=m.trades.filter(t=>t.pnl>0).length;
+  let pic=c.capital, dd=0; m.trades.forEach(t=>{ pic=Math.max(pic,t.capital); dd=Math.min(dd,t.capital/pic-1); });
+  return {m, n, reussite:n?g/n:0, res:m.capital/c.capital-1, dd, frais:m.fraisTot,
+          longs:m.trades.filter(t=>t.dir===1).length, shorts:m.trades.filter(t=>t.dir===-1).length};
+}
+
+/* =========================================================
+   DONNÉES : Binance en direct (API publique), sinon démo
+   ========================================================= */
 const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
 let mode=null, bougies=[];
 
-async function chargerPaquet(limit,fin){
+async function paquet(tf, limit, fin){
   for(const s of SOURCES){
     try{
-      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
-      const r=await fetch(`${s}/api/v3/klines?symbol=BTCUSDT&interval=${TF}&limit=${limit}`+(fin?`&endTime=${fin}`:""),{signal:ctl.signal});
+      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
+      const r=await fetch(`${s}/api/v3/klines?symbol=BTCUSDT&interval=${tf}&limit=${limit}`+(fin?`&endTime=${fin}`:""),{signal:ctl.signal});
       clearTimeout(to);
       if(!r.ok) continue;
       const j=await r.json();
-      return j.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4]}));
+      return j.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5],tb:+k[9]}));
     }catch(e){}
   }
   return null;
 }
-async function chargerBinance(total=500){
+async function charger(tf, total){
   let out=[], fin=null;
   while(out.length<total){
-    const p=await chargerPaquet(Math.min(1000,total-out.length),fin);
+    const p=await paquet(tf, Math.min(1000,total-out.length), fin);
     if(!p) return out.length?out:null;
     if(!p.length) break;
     out=p.concat(out); fin=p[0].t-1;
@@ -248,85 +321,124 @@ async function chargerBinance(total=500){
   return out;
 }
 
-// Marché simulé : marche aléatoire avec phases de tendance
-let graine=Date.now()%100000;
+// Marché simulé : la pression suit le prix de la même bougie mais ne PRÉDIT rien
+let graine=(Date.now()%100000)+1;
 function alea(){ graine=(graine*16807)%2147483647; return graine/2147483647; }
 function gauss(){ return Math.sqrt(-2*Math.log(alea()||1e-9))*Math.cos(2*Math.PI*alea()); }
-let tendance=0;
-function bougieDemo(prec,t){
-  if(alea()<0.02) tendance=(alea()-0.5)*0.0009;
-  const o=prec?prec.c:72000, c=o*Math.exp(tendance+gauss()*0.0018);
-  return {t,o,c,h:Math.max(o,c)*(1+Math.abs(gauss())*0.0009),l:Math.min(o,c)*(1-Math.abs(gauss())*0.0009)};
+let derive=0;
+function bougieDemo(prec, t, ms){
+  const sig=0.0018*Math.sqrt(ms/300000);
+  if(alea()<0.03) derive=(alea()-0.5)*sig*0.4;
+  const o=prec?prec.c:72000, z=gauss(), c=o*Math.exp(derive+z*sig);
+  const v=100*(1+Math.abs(gauss()));
+  const part=Math.min(0.85,Math.max(0.15,0.5+0.08*z+0.04*gauss()));
+  return {t,o,c,h:Math.max(o,c)*(1+Math.abs(gauss())*sig*0.5),l:Math.min(o,c)*(1-Math.abs(gauss())*sig*0.5),v,tb:v*part};
 }
-function genererDemo(n){
-  const out=[]; let t=Math.floor(Date.now()/MS)*MS-n*MS;
-  for(let i=0;i<n;i++){ out.push(bougieDemo(out[i-1],t)); t+=MS; }
+function genererDemo(n, ms){
+  const out=[]; let t=Math.floor(Date.now()/ms)*ms-n*ms;
+  for(let i=0;i<n;i++){ out.push(bougieDemo(out[i-1],t,ms)); t+=ms; }
   return out;
 }
 
-/* ---------------- État de l'appli ---------------- */
-let M=new Moteur(cfg()), enMarche=false, minuteur=null, dernierTraite=null, marqueurs=[];
+/* =========================================================
+   ÉTAT ET UTILITAIRES
+   ========================================================= */
+let C=cfgDe(R), M=new Moteur(C), enMarche=false, minuteur=null, dernierTraite=null, marqueurs=[];
 const $=id=>document.getElementById(id);
-const eur=v=>(v>=0?"+":"")+v.toFixed(2);
+const sgn=v=>(v>=0?"+":"")+v.toFixed(2);
+const pct=v=>(v>=0?"+":"")+(v*100).toFixed(1)+" %";
 const fmtPrix=v=>v.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
-const heure=t=>new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-
+const heure=t=>new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
 function toast(msg){ const e=$("toast"); e.textContent=msg; e.classList.add("vu"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("vu"),2600); }
+function ouvrir(titre, html){ $("resTitre").textContent=titre; $("resCorps").innerHTML=html;
+  $("resBoutons").innerHTML='<button class="second" id="btnFermerRes">Fermer</button>';
+  $("btnFermerRes").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+  $("feuilleRes").classList.add("ouverte"); }
 
 function majStatut(){
-  const s=$("statut"); s.className="statut "+(mode||"");
+  $("statut").className="statut "+(mode||"");
   $("statutTxt").textContent= mode==="live" ? "Prix réels Binance" : mode==="demo" ? "Mode démo (accéléré)" : "Connexion…";
+  $("paire").textContent="BTC / USDT · "+(C.tf==="1h"?"1 heure":"15 min");
 }
 
-/* ---------------- Boucle ---------------- */
+// Indice Peur & Avidité (sentiment du marché, mis à jour 1 fois par jour) — affiché à titre d'info
+async function chargerFng(){
+  try{
+    const r=await fetch("https://api.alternative.me/fng/?limit=1"); const j=await r.json();
+    const v=+j.data[0].value, txt={ "Extreme Fear":"Peur extrême","Fear":"Peur","Neutral":"Neutre","Greed":"Avidité","Extreme Greed":"Avidité extrême"}[j.data[0].value_classification]||j.data[0].value_classification;
+    const e=$("fng"); e.style.display="flex"; e.innerHTML=`Sentiment : <b class="${v<45?"neg":v>55?"pos":""}">${txt} ${v}/100</b>`;
+  }catch(e){}
+}
+
+/* =========================================================
+   BOUCLE EN DIRECT
+   ========================================================= */
+async function demarrerFlux(){
+  clearInterval(minuteur);
+  const d=await charger(C.tf, 400);
+  if(d && d.length){ mode="live"; bougies=d; }
+  else { mode="demo"; bougies=genererDemo(400, C.ms); }
+  dernierTraite = enMarche ? bougies[bougies.length-2].t : null;
+  majStatut(); dessiner(); majUI();
+  minuteur=setInterval(tick, mode==="live"?20000:1500);
+}
 async function tick(){
   if(mode==="live"){
-    const d=await chargerBinance(200);
-    if(d){ fusionner(d); }
+    const d=await paquet(C.tf, 50);
+    if(d){
+      const dernier=bougies[bougies.length-1].t;
+      for(const k of d){ if(k.t>dernier) bougies.push(k); else if(k.t===dernier) bougies[bougies.length-1]=k; }
+      if(bougies.length>800) bougies=bougies.slice(-800);
+    }
   } else {
-    bougies.push(bougieDemo(bougies[bougies.length-1], bougies[bougies.length-1].t+MS));
-    if(bougies.length>600) bougies.shift();
+    bougies.push(bougieDemo(bougies[bougies.length-1], bougies[bougies.length-1].t+C.ms, C.ms));
+    if(bougies.length>800) bougies.shift();
   }
   traiter(); dessiner(); majUI();
 }
-
-function fusionner(d){
-  const dernier=bougies.length?bougies[bougies.length-1].t:0;
-  for(const k of d){
-    if(k.t>dernier) bougies.push(k);
-    else if(k.t===dernier) bougies[bougies.length-1]=k;
-  }
-  if(bougies.length>600) bougies=bougies.slice(-600);
-}
-
 function traiter(){
   if(!enMarche) return;
-  // En direct, la dernière bougie est encore en cours : on ne traite que les bougies clôturées
-  const fin = mode==="live" ? bougies.length-2 : bougies.length-1;
-  const ind=indicateurs(bougies,M.c);
-  for(let i=Math.max(M.c.tend,M.c.emaL+1);i<=fin;i++){
+  const fin = mode==="live" ? bougies.length-2 : bougies.length-1;   // en direct, la dernière bougie n'est pas finie
+  const ind=indicateurs(bougies, C);
+  for(let i=ind.debut+1;i<=fin;i++){
     if(dernierTraite!==null && bougies[i].t<=dernierTraite) continue;
     dernierTraite=bougies[i].t;
-    const r=M.etape(bougies,ind,i);
-    if(r.entree){ const pe=r.sortie?r.sortie.pe:M.pos.prix; marqueurs.push({t:bougies[i].t,p:pe,type:"a"}); toast("▲ Achat simulé à "+fmtPrix(pe)); }
-    if(r.sortie){ marqueurs.push({t:r.sortie.sortie,p:r.sortie.ps,type:r.sortie.pnl>=0?"g":"p"});
-      toast((r.sortie.pnl>=0?"✓ ":"✕ ")+r.sortie.raison+" "+eur(r.sortie.pnl)+" $"); }
+    const r=M.etape(bougies, ind, i);
+    if(r.entree){
+      const pe = r.sortie ? r.sortie.pe : M.pos.prix;
+      marqueurs.push({t:bougies[i].t,p:pe,type:r.entree===1?"L":"S"});
+      toast((r.entree===1?"▲ Achat":"▼ Vente à découvert")+" à "+fmtPrix(pe));
+    }
+    if(r.sortie){
+      marqueurs.push({t:r.sortie.sortie,p:r.sortie.ps,type:r.sortie.pnl>=0?"g":"p"});
+      toast((r.sortie.pnl>=0?"✓ ":"✕ ")+r.sortie.raison+" "+sgn(r.sortie.pnl)+" $");
+    }
   }
 }
 
-/* ---------------- Affichage ---------------- */
+/* =========================================================
+   AFFICHAGE
+   ========================================================= */
 function majUI(){
-  if(!bougies.length) return;
-  const der=bougies[bougies.length-1], ref=bougies[Math.max(0,bougies.length-13)];
+  if(bougies.length<2) return;
+  const der=bougies[bougies.length-1], n1h=Math.max(1,Math.round(3600000/C.ms)), ref=bougies[Math.max(0,bougies.length-1-n1h)];
   $("prix").textContent=fmtPrix(der.c)+" $";
-  const v=(der.c/ref.c-1)*100; const ev=$("var");
+  const v=(der.c/ref.c-1)*100, ev=$("var");
   ev.textContent=(v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(2)+" % sur 1 h"; ev.className="var "+(v>=0?"pos":"neg");
 
-  const valeur=M.capital+(M.pos? M.pos.qte*der.c*(1-M.c.frais):0);
+  // Marché : pression lissée et tendance (sur la dernière bougie clôturée)
+  const ind=indicateurs(bougies, C), i=bougies.length-2;
+  const pa=ind.pe[i]*100; $("jA").style.width=pa+"%";
+  $("pAch").textContent="Acheteurs "+pa.toFixed(1)+" %"; $("pVen").textContent="Vendeurs "+(100-pa).toFixed(1)+" %";
+  const x=bougies[i].c, h=x>ind.et[i]&&ind.et[i]>ind.et[i-1], ba=x<ind.et[i]&&ind.et[i]<ind.et[i-1];
+  $("tend").innerHTML="Tendance : "+(h?'<b class="pos">Haussière ▲</b>':ba?'<b class="neg">Baissière ▼</b>':'<b class="mut">Neutre</b>');
+
+  const valeur=M.valeur(der.c);
   $("capital").textContent=valeur.toFixed(2)+" $";
-  const tot=valeur-M.c.capital; const et=$("total"); et.textContent=eur(tot)+" $"; et.className="val "+(tot>=0?"pos":"neg");
+  const tot=valeur-C.capital, et=$("total"); et.textContent=sgn(tot)+" $"; et.className="val "+(tot>=0?"pos":"neg");
   M.nouveauJour(der.t);
-  const j=valeur-M.capJour; const ej=$("jour"); ej.textContent=eur(j)+" $"; ej.className="val "+(j>=0?"pos":"neg");
+  const j=valeur-M.capJour, ej=$("jour"); ej.textContent=sgn(j)+" $"; ej.className="val "+(j>=0?"pos":"neg");
   const g=M.trades.filter(t=>t.pnl>0).length;
   $("nb").textContent=M.trades.length+" · "+(M.trades.length?Math.round(g/M.trades.length*100):0)+" %";
   $("frais").textContent="-"+M.fraisTot.toFixed(2)+" $";
@@ -334,29 +446,27 @@ function majUI(){
   const eb=$("etatBot");
   if(!enMarche){ eb.textContent="Arrêté"; eb.className="val"; }
   else if(M.bloque){ eb.textContent="Stoppé (perte max jour)"; eb.className="val neg"; }
-  else if(der.t<M.pauseJusqua){ eb.textContent="Pause jusqu'à "+heure(M.pauseJusqua); eb.className="val neg"; }
-  else if(M.pos){ eb.textContent="En position"; eb.className="val pos"; }
-  else { eb.textContent="Surveille le marché"; eb.className="val"; }
+  else if(der.t<M.pauseJusqua){ eb.textContent="En pause"; eb.className="val neg"; }
+  else if(M.pos){ eb.textContent=M.pos.dir===1?"Joue la hausse":"Joue la baisse"; eb.className="val "+(M.pos.dir===1?"pos":"neg"); }
+  else { eb.textContent="Attend un signal"; eb.className="val"; }
 
-  // Position
   const pz=$("position");
   if(M.pos){
-    const p=M.pos, pnl=p.qte*der.c*(1-M.c.frais)-p.mise;
-    const pct=Math.min(100,Math.max(0,(der.c-p.sl)/(p.tp-p.sl)*100));
+    const p=M.pos, pnl=M.valeur(der.c)-M.capital-p.mise;
     pz.innerHTML=`
-      <div class="ligne"><span>Achat à</span><b>${fmtPrix(p.prix)} $</b></div>
-      <div class="ligne"><span>Mise</span><b>${p.mise.toFixed(2)} $</b></div>
-      <div class="ligne"><span>Résultat si vente maintenant</span><b class="${pnl>=0?"pos":"neg"}">${eur(pnl)} $</b></div>
-      <div class="barre"><div class="curseur" style="left:${pct}%"></div></div>
-      <div class="ligne" style="font-size:12px;color:var(--mut)"><span>SL ${fmtPrix(p.sl)}</span><span>TP ${fmtPrix(p.tp)}</span></div>`;
-  } else pz.innerHTML=`<div class="etat">${enMarche?"Aucune position — le bot attend un signal.":"Bot arrêté. Appuie sur « Démarrer »."}</div>`;
+      <div class="ligne"><span>Sens</span><span class="tag ${p.dir===1?"long":"short"}">${p.dir===1?"HAUSSE (achat)":"BAISSE (vente à découvert)"}</span></div>
+      <div class="ligne"><span>Entrée</span><b>${fmtPrix(p.prix)} $</b></div>
+      <div class="ligne"><span>Objectif</span><b class="pos">${fmtPrix(p.tp)} $</b></div>
+      <div class="ligne"><span>Stop-loss</span><b class="neg">${fmtPrix(p.sl)} $</b></div>
+      <div class="ligne"><span>Résultat si sortie maintenant</span><b class="${pnl>=0?"pos":"neg"}">${sgn(pnl)} $</b></div>`;
+  } else pz.innerHTML=`<div class="etat">${enMarche?"Pas de position — le bot attend un signal.":"Bot arrêté. Appuie sur « Démarrer »."}</div>`;
 
-  // Trades
   const tz=$("trades");
   if(!M.trades.length) tz.innerHTML='<div class="vide">Pas encore de trade.</div>';
   else tz.innerHTML=M.trades.slice(-15).reverse().map(t=>`
-    <div class="trade"><div><div>${heure(t.entree)} → ${heure(t.sortie)}</div><div class="r">${t.raison} · ${fmtPrix(t.pe)} → ${fmtPrix(t.ps)}</div></div>
-    <div class="p ${t.pnl>=0?"pos":"neg"}">${eur(t.pnl)} $</div></div>`).join("");
+    <div class="trade"><div><div><span class="tag ${t.dir===1?"long":"short"}">${t.dir===1?"HAUSSE":"BAISSE"}</span> ${heure(t.entree)}</div>
+    <div class="r">${t.raison} · ${fmtPrix(t.pe)} → ${fmtPrix(t.ps)}</div></div>
+    <div class="p ${t.pnl>=0?"pos":"neg"}">${sgn(t.pnl)} $</div></div>`).join("");
 }
 
 function dessiner(){
@@ -364,93 +474,147 @@ function dessiner(){
   if(cv.width!==W*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
   const x=cv.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
   if(bougies.length<30) return;
-  const N=Math.min(120,bougies.length), b=bougies.slice(-N), ind=indicateurs(bougies,M.c), off=bougies.length-N;
+  const N=Math.min(120,bougies.length), b=bougies.slice(-N), ind=indicateurs(bougies,C), off=bougies.length-N;
   let mn=Infinity,mx=-Infinity; b.forEach(k=>{mn=Math.min(mn,k.l);mx=Math.max(mx,k.h);});
-  if(M.pos){ mn=Math.min(mn,M.pos.sl); mx=Math.max(mx,M.pos.tp); }
+  if(M.pos){ mn=Math.min(mn,M.pos.sl,M.pos.tp); mx=Math.max(mx,M.pos.sl,M.pos.tp); }
   const pad=(mx-mn)*0.08; mn-=pad; mx+=pad;
   const gx=i=>i/(N-1)*(W-48), gy=v=>H-((v-mn)/(mx-mn))*H;
-  // grille
-  x.strokeStyle="#26303c"; x.lineWidth=1; x.fillStyle="#8a97a6"; x.font="10px sans-serif"; x.textAlign="left";
+  x.strokeStyle="#26303c"; x.lineWidth=1; x.fillStyle="#8a97a6"; x.font="10px sans-serif";
   for(let k=0;k<=3;k++){ const v=mn+(mx-mn)*k/3, y=gy(v); x.beginPath(); x.moveTo(0,y); x.lineTo(W-48,y); x.stroke(); x.fillText(Math.round(v).toLocaleString("fr-FR"),W-44,Math.min(H-2,Math.max(10,y+3))); }
-  // TP / SL
   if(M.pos){ [[M.pos.tp,"#22c55e"],[M.pos.sl,"#ef4444"],[M.pos.prix,"#8a97a6"]].forEach(([v,c])=>{ x.setLineDash([4,4]); x.strokeStyle=c; x.beginPath(); x.moveTo(0,gy(v)); x.lineTo(W-48,gy(v)); x.stroke(); }); x.setLineDash([]); }
   const ligne=(arr,c,w)=>{ x.strokeStyle=c; x.lineWidth=w; x.beginPath(); arr.forEach((v,i)=>i?x.lineTo(gx(i),gy(v)):x.moveTo(gx(i),gy(v))); x.stroke(); };
-  ligne(ind.et.slice(off),"#f5b70a",1.5);
-  ligne(ind.el.slice(off),"#a78bfa",1.5);
-  ligne(ind.er.slice(off),"#3b82f6",1.5);
+  ligne(Array.from(ind.et.slice(off)),"#f5b70a",1.5);
   ligne(b.map(k=>k.c),"#e8edf3",2);
-  // marqueurs
   const t0=b[0].t;
   marqueurs.filter(m=>m.t>=t0).forEach(m=>{
-    const i=(m.t-t0)/MS, px=gx(i), py=gy(m.p);
-    x.fillStyle= m.type==="a" ? "#22c55e" : m.type==="g" ? "#22c55e" : "#ef4444";
+    const px=gx((m.t-t0)/C.ms), py=gy(m.p);
     x.beginPath();
-    if(m.type==="a"){ x.moveTo(px,py+4); x.lineTo(px-6,py+14); x.lineTo(px+6,py+14); x.closePath(); }
-    else x.arc(px,py,5,0,Math.PI*2);
+    if(m.type==="L"){ x.fillStyle="#22c55e"; x.moveTo(px,py+4); x.lineTo(px-6,py+14); x.lineTo(px+6,py+14); x.closePath(); }
+    else if(m.type==="S"){ x.fillStyle="#ef4444"; x.moveTo(px,py-4); x.lineTo(px-6,py-14); x.lineTo(px+6,py-14); x.closePath(); }
+    else { x.fillStyle=m.type==="g"?"#22c55e":"#ef4444"; x.arc(px,py,5,0,Math.PI*2); }
     x.fill();
   });
 }
 
-/* ---------------- Backtest ---------------- */
+/* =========================================================
+   📊 BACKTEST des réglages actuels (30 derniers jours)
+   ========================================================= */
+const L=(a,v,cl="")=>`<div class="ligne"><span>${a}</span><b class="${cl}">${v}</b></div>`;
 async function lancerBacktest(){
-  $("feuilleBacktest").classList.add("ouverte");
-  $("resBacktest").innerHTML="Calcul…";
-  let b, source;
-  if(mode==="live"){ b=await chargerBinance(7*288); if(b) source=`${Math.round(b.length/288)} derniers jours de prix réels (bougies 5 min)`; }
-  if(!b){ b=genererDemo(7*288); source="7 jours de marché simulé"; }
-  const c=cfg(), m=new Moteur(c), ind=indicateurs(b,c);
-  for(let i=c.tend;i<b.length;i++) m.etape(b,ind,i);
-  if(m.pos){ const d=b[b.length-1]; m.sortir(d.t,d.c,"Fin"); }
-  const n=m.trades.length, g=m.trades.filter(t=>t.pnl>0);
-  const res=(m.capital/c.capital-1)*100;
-  let pic=c.capital, dd=0; m.trades.forEach(t=>{ pic=Math.max(pic,t.capital); dd=Math.min(dd,t.capital/pic-1); });
-  const btc=(b[b.length-1].c/b[0].c-1)*100;
-  const L=(a,v,cl="")=>`<div class="ligne"><span>${a}</span><b class="${cl}">${v}</b></div>`;
-  $("resBacktest").innerHTML=
-    `<div class="note" style="margin:0 0 8px">Données : ${source}</div>`+
-    L("Variation du BTC",(btc>=0?"+":"")+btc.toFixed(2)+" %")+
-    L("Nombre de trades",n)+
-    L("Taux de réussite",(n?Math.round(g.length/n*100):0)+" %")+
-    L("Frais payés","-"+m.fraisTot.toFixed(2)+" $","neg")+
-    L("Pire baisse",dd*100<0?(dd*100).toFixed(1)+" %":"0 %","neg")+
-    L("Capital final",m.capital.toFixed(2)+" $")+
-    L("Résultat",(res>=0?"+":"")+res.toFixed(2)+" %",res>=0?"pos":"neg")+
-    `<div class="verdict ${res>=0?"pos":"neg"}">${res>=0?"Rentable sur cette période — à confirmer sur d'autres périodes avant toute conclusion.":"Perdant sur cette période : en réel, cette stratégie t'aurait coûté de l'argent."}</div>`+
-    `<div class="note">Un résultat positif sur une seule période ne prouve rien. Il faut plusieurs semaines de résultats positifs, frais compris.</div>`;
+  ouvrir("Test des réglages actuels","Téléchargement des prix…");
+  const nb=Math.round(30*86400000/C.ms)+C.L+20;
+  let b=null, source;
+  if(mode==="live") b=await charger(C.tf, nb);
+  if(b){ source=`${Math.round(b.length*C.ms/86400000)} derniers jours de prix réels`; }
+  else { b=genererDemo(nb, C.ms); source="30 jours de marché simulé"; }
+  const r=simuler(b, indicateurs(b,C), C, 0, b.length);
+  const btc=b[b.length-1].c/b[0].c-1;
+  $("resCorps").innerHTML=
+    `<div class="note" style="margin:0 0 8px">${source} · bougies ${C.tf==="1h"?"1 h":"15 min"}</div>`+
+    L("Variation du BTC",pct(btc))+
+    L("Trades (hausse / baisse)",`${r.n} (${r.longs} / ${r.shorts})`)+
+    L("Taux de réussite",Math.round(r.reussite*100)+" %")+
+    L("Frais payés","-"+r.frais.toFixed(2)+" $","neg")+
+    L("Pire baisse",(r.dd*100).toFixed(1)+" %","neg")+
+    L("Capital final",r.m.capital.toFixed(2)+" $")+
+    L("Résultat",pct(r.res),r.res>=0?"pos":"neg")+
+    `<div class="verdict ${r.res>=0?"pos":"neg"}">${r.res>=0?"Gagnant sur cette période. Lance l'optimiseur 🔬 pour vérifier que ça tient sur une période inconnue.":"Perdant sur cette période."}</div>`;
 }
 
-/* ---------------- Boutons ---------------- */
+/* =========================================================
+   🔬 OPTIMISEUR : apprentissage sur 30 jours, vérification sur les 30 suivants
+   ========================================================= */
+const GRILLE={L:[20,50,100], N:[3,6,12], s:[0.02,0.04,0.06], ksl:[1,1.5,2], ktp:[1.5,2,3]};
+let meilleur=null;
+async function lancerOptim(){
+  const corps=`<div class="note" style="margin:0">Teste ${2*243} combinaisons (2 unités de temps × 243 réglages).
+    Les 30 premiers jours servent à <b>choisir</b> les réglages, les 30 jours suivants à <b>vérifier</b> sur des prix que le bot n'a jamais vus.</div>
+    <div class="progres"><div id="barre"></div></div><div class="note" id="etape">Téléchargement des prix…</div>`;
+  ouvrir("Optimiseur", corps);
+  const resultats=[]; let demo=false; const btcPer={};
+  const combos=[]; for(const l of GRILLE.L)for(const n of GRILLE.N)for(const s of GRILLE.s)for(const a of GRILLE.ksl)for(const t of GRILLE.ktp) combos.push({L:l,N:n,s,ksl:a,ktp:t});
+  let fait=0;
+  for(const tf of ["15m","1h"]){
+    const ms=TFMS[tf], nb=Math.round(60*86400000/ms)+120;
+    $("etape").textContent=`Téléchargement de 60 jours en ${tf==="1h"?"1 h":"15 min"}…`;
+    let b = mode==="live" ? await charger(tf, nb) : null;
+    if(!b || b.length<nb*0.8){ b=genererDemo(nb, ms); demo=true; }
+    const mid=b.findIndex(k=>k.t>=b[b.length-1].t-30*86400000);
+    btcPer[tf]={app:b[mid-1].c/b[120].c-1, test:b[b.length-1].c/b[mid].c-1};
+    const base=baseInd(b);
+    $("etape").textContent=`Calcul des combinaisons en ${tf==="1h"?"1 h":"15 min"}…`;
+    for(let k=0;k<combos.length;k++){
+      const r={...R, ...combos[k], tf, sens:R.sens}, c=cfgDe(r), ind=indicateurs(b,c,base);
+      const app=simuler(b, ind, c, 120, mid), test=simuler(b, ind, c, mid, b.length);
+      resultats.push({r, app, test});
+      if(++fait%40===0){ $("barre").style.width=(fait/(2*combos.length)*100)+"%"; await pause(0); }
+    }
+  }
+  $("barre").style.width="100%";
+  afficherOptim(resultats, demo, btcPer);
+}
+function afficherOptim(res, demo, btc){
+  const valides=res.filter(x=>x.app.n>=8);
+  valides.sort((a,b)=>b.app.res-a.app.res);
+  const top=valides.slice(0,10);
+  meilleur=top[0];
+  const gagnApp=valides.filter(x=>x.app.res>0).length, gagnTest=res.filter(x=>x.test.res>0).length;
+  const topOk=top.filter(x=>x.test.res>0).length;
+  const m=meilleur;
+  let verdict, cls;
+  if(!m){ verdict="Aucune combinaison n'a fait assez de trades pour conclure."; cls="neutre"; }
+  else if(m.test.res>0 && topOk>=7){ verdict=`Le meilleur réglage reste gagnant sur la période inconnue (${pct(m.test.res)}), et ${topOk} des 10 meilleurs aussi. C'est un début d'avantage — à confirmer en simulation directe pendant plusieurs semaines.`; cls="pos"; }
+  else if(m.test.res>0){ verdict=`Le meilleur réglage gagne sur la période inconnue (${pct(m.test.res)}), mais seulement ${topOk} des 10 meilleurs sur 10. Résultat fragile : probablement de la chance.`; cls="neutre"; }
+  else { verdict=`Le meilleur réglage de l'apprentissage (${pct(m.app.res)}) PERD sur la période inconnue (${pct(m.test.res)}). Ce qui marchait dans le passé ne marche plus ensuite : la stratégie n'a pas d'avantage réel.`; cls="neg"; }
+  const ligneTab=x=>`<tr><td>${x.r.tf} · T${x.r.L} P${x.r.N} ${Math.round(x.r.s*100)}% · ${x.r.ksl}/${x.r.ktp}</td><td class="${x.app.res>=0?"pos":"neg"}">${pct(x.app.res)}</td><td class="${x.test.res>=0?"pos":"neg"}">${pct(x.test.res)}</td></tr>`;
+  $("resCorps").innerHTML=
+    (demo?`<div class="verdict neutre" style="margin:0 0 10px">Prix réels indisponibles : test sur marché simulé (sans valeur prédictive).</div>`:"")+
+    L("BTC pendant l'apprentissage", `15 min ${pct(btc["15m"].app)} · 1 h ${pct(btc["1h"].app)}`)+
+    L("BTC pendant la vérification", `15 min ${pct(btc["15m"].test)} · 1 h ${pct(btc["1h"].test)}`)+
+    L("Réglages gagnants (apprentissage)", `${gagnApp} / ${valides.length}`)+
+    L("Réglages gagnants (vérification)", `${gagnTest} / ${res.length}`)+
+    `<div class="verdict ${cls}">${verdict}</div>`+
+    `<h4>Les 10 meilleurs réglages de l'apprentissage</h4>
+     <table><tr><th>Réglage</th><th>Appr.</th><th>Vérif.</th></tr>${top.map(ligneTab).join("")}</table>
+     <div class="note">T = moyenne de tendance, P = lissage de la pression, % = seuil, x/y = stop / objectif en ATR. Seule la colonne « Vérif. » compte : c'est ce qui serait arrivé avec de l'argent réel.</div>`;
+  if(m){
+    $("resBoutons").innerHTML='<button class="second" id="btnFermerRes">Fermer</button><button class="principal" id="btnAppliquer">Utiliser le n°1</button>';
+    $("btnFermerRes").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+    $("btnAppliquer").onclick=()=>{ R={...R, ...meilleur.r}; sauver(); appliquer(); $("feuilleRes").classList.remove("ouverte"); toast("Réglages n°1 appliqués"); };
+  }
+}
+
+/* =========================================================
+   BOUTONS
+   ========================================================= */
+function appliquer(){
+  const tfChange = C.tf!==R.tf;
+  C=cfgDe(R); M=new Moteur(C); marqueurs=[];
+  if(tfChange) demarrerFlux(); else { dernierTraite = enMarche ? bougies[bougies.length-2].t : null; majStatut(); majUI(); dessiner(); }
+}
 $("btnStart").onclick=()=>{
   enMarche=!enMarche;
-  const b=$("btnStart"); b.textContent=enMarche?"Arrêter le bot":"Démarrer le bot"; b.classList.toggle("stop",enMarche);
-  if(enMarche){ dernierTraite=bougies.length?bougies[bougies.length-2]?.t ?? null:null; toast("Bot démarré"); }
-  else toast("Bot arrêté");
-  majUI();
+  const b=$("btnStart"); b.textContent=enMarche?"Arrêter":"Démarrer"; b.classList.toggle("stop",enMarche);
+  if(enMarche && bougies.length>1) dernierTraite=bougies[bougies.length-2].t;
+  toast(enMarche?"Bot démarré":"Bot arrêté"); majUI();
 };
 $("btnBacktest").onclick=lancerBacktest;
-$("btnFermerB").onclick=()=>$("feuilleBacktest").classList.remove("ouverte");
-$("btnReglages").onclick=()=>{
-  for(const k in R) $("r_"+k).value=R[k];
-  $("feuilleReglages").classList.add("ouverte");
-};
+$("btnOptim").onclick=lancerOptim;
+$("btnReglages").onclick=()=>{ for(const k in DEFAUT) $("r_"+k).value=R[k]; $("feuilleReglages").classList.add("ouverte"); };
 $("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
 $("btnSauverR").onclick=()=>{
-  for(const k in R){ const v=parseFloat($("r_"+k).value); if(isFinite(v)&&v>0) R[k]=v; }
-  try{ localStorage.setItem("scalp_reglages_v2",JSON.stringify(R)); }catch(e){}
-  M=new Moteur(cfg()); marqueurs=[]; dernierTraite=bougies.length?bougies[bougies.length-1].t:null;
-  $("feuilleReglages").classList.remove("ouverte"); toast("Réglages enregistrés"); majUI(); dessiner();
+  for(const k in DEFAUT){
+    const el=$("r_"+k);
+    if(el.tagName==="SELECT") R[k]=el.value;
+    else { const v=parseFloat(el.value); if(isFinite(v)&&v>0) R[k]=v; }
+  }
+  sauver(); $("feuilleReglages").classList.remove("ouverte"); appliquer(); toast("Réglages enregistrés");
 };
 document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
 window.addEventListener("resize",dessiner);
 
-/* ---------------- Démarrage ---------------- */
-(async()=>{
-  const d=await chargerBinance(500);
-  if(d && d.length){ mode="live"; bougies=d; }
-  else { mode="demo"; bougies=genererDemo(300); }
-  majStatut(); dessiner(); majUI();
-  minuteur=setInterval(tick, mode==="live"?10000:1500);
-})();
+demarrerFlux();
+chargerFng();
 })();
 </script>
 </body>

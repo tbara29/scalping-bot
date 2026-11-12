@@ -1,4 +1,16 @@
-# Bot de scalping crypto — simulation uniquement
+# Trend Bot — simulation uniquement
+
+## Interface mobile (v3) : https://tbara29.github.io/scalping-bot/
+- Suit la tendance à la hausse ET à la baisse (vente à découvert simulée, sans effet de levier)
+- Signal : pression acheteurs/vendeurs (part des achats « au marché » dans le volume Binance) + moyenne de tendance
+- Stop et objectif calés sur la volatilité (ATR), sortie aussi si la tendance se retourne
+- 📊 teste les réglages actuels sur 30 jours de vrais prix
+- 🔬 optimiseur : choisit les réglages sur 30 jours, puis les vérifie sur les 30 jours suivants (jamais vus)
+- Indice « Peur & Avidité » affiché à titre d'information
+
+---
+
+# Script Python (v2, scalping long uniquement)
 
 Aucun argent réel n'est engagé : le bot ne se connecte à aucun compte.
 
