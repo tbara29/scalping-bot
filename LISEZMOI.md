@@ -18,8 +18,10 @@ Mets `bot_scalping.py` dans un dossier, ouvre un terminal dans ce dossier, puis 
   Les trades sont notés dans `journal_BTCUSDT.jsonl`.
 
 ## La stratégie
-- Achat quand la moyenne rapide (9 min) croise au-dessus de la lente (21 min), sauf si le RSI est au-dessus de 65
-- Sortie à +0,4 % (gain encaissé), à -0,3 % (perte coupée) ou après 30 min
+- Bougies de 5 minutes
+- Achat quand la moyenne rapide (9 bougies) croise au-dessus de la lente (21 bougies), sauf si le RSI est au-dessus de 65
+- Filtre de tendance : achat seulement si le prix est au-dessus de sa moyenne sur 3 h et que celle-ci monte (le bot reste dehors quand le marché baisse)
+- Sortie à +1 % (gain encaissé), à -0,5 % (perte coupée) ou après 2 h
 - Frais Binance (0,1 % par ordre) et glissement inclus
 
 ## Garde-fous

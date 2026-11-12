@@ -70,7 +70,7 @@
 
 <header>
   <div>
-    <div class="paire">BTC / USDT · 1 min</div>
+    <div class="paire">BTC / USDT · 5 min</div>
     <div class="prix" id="prix">—</div>
     <div class="var" id="var">&nbsp;</div>
   </div>
@@ -92,8 +92,9 @@
   <canvas id="graph"></canvas>
   <div class="legende">
     <span><i style="background:#e8edf3"></i>Prix</span>
-    <span><i style="background:var(--bleu)"></i>Moy. 9 min</span>
-    <span><i style="background:var(--violet)"></i>Moy. 21 min</span>
+    <span><i style="background:var(--bleu)"></i>Moy. rapide</span>
+    <span><i style="background:var(--violet)"></i>Moy. lente</span>
+    <span><i style="background:var(--jaune)"></i>Tendance 3 h</span>
     <span>▲ achat · ● vente</span>
   </div>
 </div>
@@ -147,29 +148,34 @@
 "use strict";
 
 /* ---------------- Réglages ---------------- */
-const DEFAUT = {capital:100, tp:0.4, sl:0.3, duree:30, pj:3, frais:0.1};
+const DEFAUT = {capital:100, tp:1, sl:0.5, duree:120, pj:3, frais:0.1};
 let R = {...DEFAUT};
-try { const s = JSON.parse(localStorage.getItem("scalp_reglages")); if (s) R = {...DEFAUT, ...s}; } catch(e){}
+try { const s = JSON.parse(localStorage.getItem("scalp_reglages_v2")); if (s) R = {...DEFAUT, ...s}; } catch(e){}
 const cfg = () => ({
   capital:R.capital, part:0.95, tp:R.tp/100, sl:R.sl/100, duree:R.duree,
   frais:R.frais/100, glis:0.0002, pj:R.pj/100, pertesMax:4, pauseMin:60,
-  emaR:9, emaL:21, rsiP:14, rsiMax:65
+  emaR:9, emaL:21, rsiP:14, rsiMax:65,
+  tend:36   // moyenne de tendance : 36 bougies de 5 min = 3 h
 });
+const TF="5m", MS=300000;   // bougies de 5 minutes
 
 /* ---------------- Indicateurs ---------------- */
 function indicateurs(b, c){
-  const n=b.length, er=new Array(n), el=new Array(n), rsi=new Array(n), sig=new Array(n).fill(false);
-  const kr=2/(c.emaR+1), kl=2/(c.emaL+1), a=1/c.rsiP;
+  const n=b.length, er=new Array(n), el=new Array(n), et=new Array(n), rsi=new Array(n), sig=new Array(n).fill(false);
+  const kr=2/(c.emaR+1), kl=2/(c.emaL+1), kt=2/(c.tend+1), a=1/c.rsiP;
   let g=0,p=0;
   for(let i=0;i<n;i++){
     const x=b[i].c;
     er[i]= i? x*kr+er[i-1]*(1-kr) : x;
     el[i]= i? x*kl+el[i-1]*(1-kl) : x;
+    et[i]= i? x*kt+et[i-1]*(1-kt) : x;
     if(i){ const d=x-b[i-1].c; g=a*Math.max(d,0)+(1-a)*g; p=a*Math.max(-d,0)+(1-a)*p; }
     rsi[i]=100-100/(1+g/(p||1e-12));
-    if(i && er[i]>el[i] && er[i-1]<=el[i-1] && rsi[i]<c.rsiMax) sig[i]=true;
+    // Filtre de tendance : on n'achète que si le prix est au-dessus de la moyenne 3 h ET qu'elle monte
+    const tendanceOk = i>=c.tend && x>et[i] && et[i]>et[i-1];
+    if(i && er[i]>el[i] && er[i-1]<=el[i-1] && rsi[i]<c.rsiMax && tendanceOk) sig[i]=true;
   }
-  return {er,el,rsi,sig};
+  return {er,el,et,rsi,sig};
 }
 
 /* ---------------- Moteur (identique au script Python) ---------------- */
@@ -218,11 +224,11 @@ class Moteur{
 const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
 let mode=null, bougies=[];
 
-async function chargerBinance(limit=500){
+async function chargerPaquet(limit,fin){
   for(const s of SOURCES){
     try{
-      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),6000);
-      const r=await fetch(`${s}/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=${limit}`,{signal:ctl.signal});
+      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
+      const r=await fetch(`${s}/api/v3/klines?symbol=BTCUSDT&interval=${TF}&limit=${limit}`+(fin?`&endTime=${fin}`:""),{signal:ctl.signal});
       clearTimeout(to);
       if(!r.ok) continue;
       const j=await r.json();
@@ -231,6 +237,16 @@ async function chargerBinance(limit=500){
   }
   return null;
 }
+async function chargerBinance(total=500){
+  let out=[], fin=null;
+  while(out.length<total){
+    const p=await chargerPaquet(Math.min(1000,total-out.length),fin);
+    if(!p) return out.length?out:null;
+    if(!p.length) break;
+    out=p.concat(out); fin=p[0].t-1;
+  }
+  return out;
+}
 
 // Marché simulé : marche aléatoire avec phases de tendance
 let graine=Date.now()%100000;
@@ -238,13 +254,13 @@ function alea(){ graine=(graine*16807)%2147483647; return graine/2147483647; }
 function gauss(){ return Math.sqrt(-2*Math.log(alea()||1e-9))*Math.cos(2*Math.PI*alea()); }
 let tendance=0;
 function bougieDemo(prec,t){
-  if(alea()<0.01) tendance=(alea()-0.5)*0.0004;
-  const o=prec?prec.c:65000, c=o*Math.exp(tendance+gauss()*0.0008);
-  return {t,o,c,h:Math.max(o,c)*(1+Math.abs(gauss())*0.0004),l:Math.min(o,c)*(1-Math.abs(gauss())*0.0004)};
+  if(alea()<0.02) tendance=(alea()-0.5)*0.0009;
+  const o=prec?prec.c:72000, c=o*Math.exp(tendance+gauss()*0.0018);
+  return {t,o,c,h:Math.max(o,c)*(1+Math.abs(gauss())*0.0009),l:Math.min(o,c)*(1-Math.abs(gauss())*0.0009)};
 }
 function genererDemo(n){
-  const out=[]; let t=Math.floor(Date.now()/60000)*60000-n*60000;
-  for(let i=0;i<n;i++){ out.push(bougieDemo(out[i-1],t)); t+=60000; }
+  const out=[]; let t=Math.floor(Date.now()/MS)*MS-n*MS;
+  for(let i=0;i<n;i++){ out.push(bougieDemo(out[i-1],t)); t+=MS; }
   return out;
 }
 
@@ -268,7 +284,7 @@ async function tick(){
     const d=await chargerBinance(200);
     if(d){ fusionner(d); }
   } else {
-    bougies.push(bougieDemo(bougies[bougies.length-1], bougies[bougies.length-1].t+60000));
+    bougies.push(bougieDemo(bougies[bougies.length-1], bougies[bougies.length-1].t+MS));
     if(bougies.length>600) bougies.shift();
   }
   traiter(); dessiner(); majUI();
@@ -288,7 +304,7 @@ function traiter(){
   // En direct, la dernière bougie est encore en cours : on ne traite que les bougies clôturées
   const fin = mode==="live" ? bougies.length-2 : bougies.length-1;
   const ind=indicateurs(bougies,M.c);
-  for(let i=Math.max(M.c.emaL+1,1);i<=fin;i++){
+  for(let i=Math.max(M.c.tend,M.c.emaL+1);i<=fin;i++){
     if(dernierTraite!==null && bougies[i].t<=dernierTraite) continue;
     dernierTraite=bougies[i].t;
     const r=M.etape(bougies,ind,i);
@@ -301,7 +317,7 @@ function traiter(){
 /* ---------------- Affichage ---------------- */
 function majUI(){
   if(!bougies.length) return;
-  const der=bougies[bougies.length-1], ref=bougies[Math.max(0,bougies.length-60)];
+  const der=bougies[bougies.length-1], ref=bougies[Math.max(0,bougies.length-13)];
   $("prix").textContent=fmtPrix(der.c)+" $";
   const v=(der.c/ref.c-1)*100; const ev=$("var");
   ev.textContent=(v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(2)+" % sur 1 h"; ev.className="var "+(v>=0?"pos":"neg");
@@ -359,13 +375,14 @@ function dessiner(){
   // TP / SL
   if(M.pos){ [[M.pos.tp,"#22c55e"],[M.pos.sl,"#ef4444"],[M.pos.prix,"#8a97a6"]].forEach(([v,c])=>{ x.setLineDash([4,4]); x.strokeStyle=c; x.beginPath(); x.moveTo(0,gy(v)); x.lineTo(W-48,gy(v)); x.stroke(); }); x.setLineDash([]); }
   const ligne=(arr,c,w)=>{ x.strokeStyle=c; x.lineWidth=w; x.beginPath(); arr.forEach((v,i)=>i?x.lineTo(gx(i),gy(v)):x.moveTo(gx(i),gy(v))); x.stroke(); };
+  ligne(ind.et.slice(off),"#f5b70a",1.5);
   ligne(ind.el.slice(off),"#a78bfa",1.5);
   ligne(ind.er.slice(off),"#3b82f6",1.5);
   ligne(b.map(k=>k.c),"#e8edf3",2);
   // marqueurs
   const t0=b[0].t;
   marqueurs.filter(m=>m.t>=t0).forEach(m=>{
-    const i=(m.t-t0)/60000, px=gx(i), py=gy(m.p);
+    const i=(m.t-t0)/MS, px=gx(i), py=gy(m.p);
     x.fillStyle= m.type==="a" ? "#22c55e" : m.type==="g" ? "#22c55e" : "#ef4444";
     x.beginPath();
     if(m.type==="a"){ x.moveTo(px,py+4); x.lineTo(px-6,py+14); x.lineTo(px+6,py+14); x.closePath(); }
@@ -379,10 +396,10 @@ async function lancerBacktest(){
   $("feuilleBacktest").classList.add("ouverte");
   $("resBacktest").innerHTML="Calcul…";
   let b, source;
-  if(mode==="live"){ b=await chargerBinance(1000); source="1 000 dernières minutes de prix réels (~16 h)"; }
-  if(!b){ b=genererDemo(7*1440); source="7 jours de marché simulé"; }
+  if(mode==="live"){ b=await chargerBinance(7*288); if(b) source=`${Math.round(b.length/288)} derniers jours de prix réels (bougies 5 min)`; }
+  if(!b){ b=genererDemo(7*288); source="7 jours de marché simulé"; }
   const c=cfg(), m=new Moteur(c), ind=indicateurs(b,c);
-  for(let i=c.emaL+1;i<b.length;i++) m.etape(b,ind,i);
+  for(let i=c.tend;i<b.length;i++) m.etape(b,ind,i);
   if(m.pos){ const d=b[b.length-1]; m.sortir(d.t,d.c,"Fin"); }
   const n=m.trades.length, g=m.trades.filter(t=>t.pnl>0);
   const res=(m.capital/c.capital-1)*100;
@@ -419,7 +436,7 @@ $("btnReglages").onclick=()=>{
 $("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
 $("btnSauverR").onclick=()=>{
   for(const k in R){ const v=parseFloat($("r_"+k).value); if(isFinite(v)&&v>0) R[k]=v; }
-  try{ localStorage.setItem("scalp_reglages",JSON.stringify(R)); }catch(e){}
+  try{ localStorage.setItem("scalp_reglages_v2",JSON.stringify(R)); }catch(e){}
   M=new Moteur(cfg()); marqueurs=[]; dernierTraite=bougies.length?bougies[bougies.length-1].t:null;
   $("feuilleReglages").classList.remove("ouverte"); toast("Réglages enregistrés"); majUI(); dessiner();
 };

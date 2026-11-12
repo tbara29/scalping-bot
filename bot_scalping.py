@@ -23,7 +23,7 @@ import pandas as pd
 # ============================================================
 CONFIG = {
     "symbole": "BTCUSDT",
-    "intervalle": "1m",          # bougies de 1 minute (scalping)
+    "intervalle": "5m",          # bougies de 5 minutes
     "capital_depart": 100.0,     # capital virtuel en USDT
     "part_par_trade": 0.95,      # % du capital engagé à chaque trade
 
@@ -32,11 +32,12 @@ CONFIG = {
     "ema_lente": 21,
     "rsi_periode": 14,
     "rsi_max_achat": 65,         # on n'achète pas si le marché est déjà « surchauffé »
+    "ema_tendance": 36,          # filtre de tendance : 36 bougies de 5 min = 3 h
 
     # Sortie
-    "take_profit": 0.004,        # +0,4 % -> on encaisse
-    "stop_loss": 0.003,          # -0,3 % -> on coupe la perte
-    "duree_max_min": 30,         # on sort après 30 min quoi qu'il arrive
+    "take_profit": 0.01,         # +1 % -> on encaisse
+    "stop_loss": 0.005,          # -0,5 % -> on coupe la perte
+    "duree_max_min": 120,        # on sort après 2 h quoi qu'il arrive
 
     # Coûts réels (Binance spot ~0,1 % par ordre, + glissement)
     "frais": 0.001,
@@ -85,12 +86,15 @@ def ajouter_indicateurs(df, c=CONFIG):
     df = df.copy()
     df["ema_r"] = df["close"].ewm(span=c["ema_rapide"], adjust=False).mean()
     df["ema_l"] = df["close"].ewm(span=c["ema_lente"], adjust=False).mean()
+    df["ema_t"] = df["close"].ewm(span=c["ema_tendance"], adjust=False).mean()
     delta = df["close"].diff()
     gain = delta.clip(lower=0).ewm(alpha=1 / c["rsi_periode"], adjust=False).mean()
     perte = (-delta.clip(upper=0)).ewm(alpha=1 / c["rsi_periode"], adjust=False).mean()
     df["rsi"] = 100 - 100 / (1 + gain / perte.replace(0, 1e-12))
     croise = (df["ema_r"] > df["ema_l"]) & (df["ema_r"].shift(1) <= df["ema_l"].shift(1))
-    df["signal_achat"] = croise & (df["rsi"] < c["rsi_max_achat"])
+    tendance_ok = (df["close"] > df["ema_t"]) & (df["ema_t"] > df["ema_t"].shift(1))
+    tendance_ok.iloc[:c["ema_tendance"]] = False
+    df["signal_achat"] = croise & (df["rsi"] < c["rsi_max_achat"]) & tendance_ok
     return df
 
 
@@ -175,7 +179,7 @@ class Portefeuille:
 def backtest(df, c=CONFIG, afficher=True):
     df = ajouter_indicateurs(df, c)
     pf = Portefeuille(c)
-    for i in range(c["ema_lente"] + 1, len(df)):
+    for i in range(c["ema_tendance"], len(df)):
         b = df.iloc[i]
         if pf.position:
             pf.verifier_sortie(b["date"], b["high"], b["low"], b["close"])
@@ -269,7 +273,7 @@ if __name__ == "__main__":
     if mode == "backtest":
         jours = int(sys.argv[2]) if len(sys.argv) > 2 else 7
         print(f"Téléchargement de {jours} jours de bougies {CONFIG['intervalle']}...")
-        data = charger_bougies(CONFIG["symbole"], CONFIG["intervalle"], jours * 1440)
+        data = charger_bougies(CONFIG["symbole"], CONFIG["intervalle"], jours * 288)
         res, trades = backtest(data)
         trades.to_csv("trades_backtest.csv", index=False)
         print("Détail des trades : trades_backtest.csv")
