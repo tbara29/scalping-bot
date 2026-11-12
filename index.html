@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Scalping Bot — Simulation</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#141a22; --card2:#1b232d; --line:#26303c;
+    --txt:#e8edf3; --mut:#8a97a6; --vert:#22c55e; --rouge:#ef4444;
+    --jaune:#f5b70a; --bleu:#3b82f6; --violet:#a78bfa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px)}
+  .bandeau{background:#2a2108;color:var(--jaune);border:1px solid #4a3a0c;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;text-align:center}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  .paire{font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.4px}
+  .prix{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .var{font-size:13px;font-weight:600}
+  .statut{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--card2);white-space:nowrap}
+  .pastille{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+  .live .pastille{background:var(--vert);box-shadow:0 0 0 3px #22c55e33}
+  .demo .pastille{background:var(--jaune)}
+  .carte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .grille{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat .lib{font-size:12px;color:var(--mut)}
+  .stat .val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .grand .val{font-size:26px}
+  .pos{color:var(--vert)} .neg{color:var(--rouge)}
+  canvas{width:100%;height:210px;display:block}
+  .legende{display:flex;gap:12px;font-size:11.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+  .legende i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  h2{font-size:13px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .etat{font-size:14px;color:var(--mut)}
+  .position .ligne{display:flex;justify-content:space-between;padding:4px 0;font-variant-numeric:tabular-nums}
+  .barre{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--rouge),var(--card2) 43%,var(--card2) 57%,var(--vert));position:relative;margin:10px 0 4px}
+  .curseur{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:#fff;transform:translateX(-2px);transition:left .3s}
+  .trade{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .trade:first-child{border-top:0}
+  .trade .r{font-size:12px;color:var(--mut)}
+  .trade .p{font-weight:700;font-variant-numeric:tabular-nums}
+  .vide{color:var(--mut);font-size:13.5px;text-align:center;padding:10px 0}
+  .actions{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:10px}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px;color:#fff;cursor:pointer}
+  .principal{flex:1;background:var(--vert);color:#04210f;font-size:16px}
+  .principal.stop{background:var(--rouge);color:#fff}
+  .second{background:var(--card2);border:1px solid var(--line);min-width:52px}
+  .feuille{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:10}
+  .feuille.ouverte{display:flex}
+  .panneau{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:88vh;overflow:auto}
+  .panneau h3{font-size:18px;margin-bottom:14px}
+  .champ{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+  .champ label{font-size:14px} .champ small{display:block;color:var(--mut);font-size:12px}
+  .champ input{width:92px;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;text-align:right}
+  .panneau .boutons{display:flex;gap:10px;margin-top:16px}
+  .panneau .boutons button{flex:1}
+  .res .ligne{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .verdict{margin-top:12px;padding:12px;border-radius:10px;font-size:14px;font-weight:600}
+  .verdict.neg{background:#3a1212} .verdict.pos{background:#0f2e1a}
+  .note{font-size:12.5px;color:var(--mut);margin-top:10px}
+  .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-120px);background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;transition:transform .3s;z-index:20;white-space:nowrap}
+  .toast.vu{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="bandeau">SIMULATION — argent virtuel uniquement, aucun ordre réel</div>
+
+<header>
+  <div>
+    <div class="paire">BTC / USDT · 1 min</div>
+    <div class="prix" id="prix">—</div>
+    <div class="var" id="var">&nbsp;</div>
+  </div>
+  <div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Connexion…</span></div>
+</header>
+
+<div class="carte">
+  <div class="grille">
+    <div class="stat grand"><div class="lib">Capital virtuel</div><div class="val" id="capital">—</div></div>
+    <div class="stat grand"><div class="lib">Résultat total</div><div class="val" id="total">—</div></div>
+    <div class="stat"><div class="lib">Aujourd'hui</div><div class="val" id="jour">—</div></div>
+    <div class="stat"><div class="lib">Trades · réussite</div><div class="val" id="nb">—</div></div>
+    <div class="stat"><div class="lib">Frais payés</div><div class="val neg" id="frais">—</div></div>
+    <div class="stat"><div class="lib">État du bot</div><div class="val" id="etatBot" style="font-size:15px">Arrêté</div></div>
+  </div>
+</div>
+
+<div class="carte">
+  <canvas id="graph"></canvas>
+  <div class="legende">
+    <span><i style="background:#e8edf3"></i>Prix</span>
+    <span><i style="background:var(--bleu)"></i>Moy. 9 min</span>
+    <span><i style="background:var(--violet)"></i>Moy. 21 min</span>
+    <span>▲ achat · ● vente</span>
+  </div>
+</div>
+
+<div class="carte position">
+  <h2>Position</h2>
+  <div id="position"><div class="etat">Aucune position — le bot attend un signal.</div></div>
+</div>
+
+<div class="carte">
+  <h2>Derniers trades</h2>
+  <div id="trades"><div class="vide">Pas encore de trade.</div></div>
+</div>
+
+<div class="actions">
+  <button class="second" id="btnBacktest" aria-label="Backtest">📊</button>
+  <button class="principal" id="btnStart">Démarrer le bot</button>
+  <button class="second" id="btnReglages" aria-label="Réglages">⚙️</button>
+</div>
+
+<!-- Réglages -->
+<div class="feuille" id="feuilleReglages">
+  <div class="panneau">
+    <h3>Réglages</h3>
+    <div class="champ"><label>Capital de départ<small>USDT virtuels</small></label><input type="number" id="r_capital" step="10"></div>
+    <div class="champ"><label>Take-profit<small>% de gain pour encaisser</small></label><input type="number" id="r_tp" step="0.05"></div>
+    <div class="champ"><label>Stop-loss<small>% de perte pour couper</small></label><input type="number" id="r_sl" step="0.05"></div>
+    <div class="champ"><label>Durée max d'un trade<small>minutes</small></label><input type="number" id="r_duree" step="5"></div>
+    <div class="champ"><label>Perte max par jour<small>% — le bot s'arrête au-delà</small></label><input type="number" id="r_pj" step="0.5"></div>
+    <div class="champ"><label>Frais par ordre<small>% (Binance ≈ 0,1)</small></label><input type="number" id="r_frais" step="0.01"></div>
+    <div class="boutons">
+      <button class="second" id="btnFermerR">Annuler</button>
+      <button class="principal" id="btnSauverR">Enregistrer et réinitialiser</button>
+    </div>
+  </div>
+</div>
+
+<!-- Résultat backtest -->
+<div class="feuille" id="feuilleBacktest">
+  <div class="panneau res">
+    <h3>Test sur l'historique</h3>
+    <div id="resBacktest">Calcul…</div>
+    <div class="boutons"><button class="second" id="btnFermerB">Fermer</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------------- Réglages ---------------- */
+const DEFAUT = {capital:100, tp:0.4, sl:0.3, duree:30, pj:3, frais:0.1};
+let R = {...DEFAUT};
+try { const s = JSON.parse(localStorage.getItem("scalp_reglages")); if (s) R = {...DEFAUT, ...s}; } catch(e){}
+const cfg = () => ({
+  capital:R.capital, part:0.95, tp:R.tp/100, sl:R.sl/100, duree:R.duree,
+  frais:R.frais/100, glis:0.0002, pj:R.pj/100, pertesMax:4, pauseMin:60,
+  emaR:9, emaL:21, rsiP:14, rsiMax:65
+});
+
+/* ---------------- Indicateurs ---------------- */
+function indicateurs(b, c){
+  const n=b.length, er=new Array(n), el=new Array(n), rsi=new Array(n), sig=new Array(n).fill(false);
+  const kr=2/(c.emaR+1), kl=2/(c.emaL+1), a=1/c.rsiP;
+  let g=0,p=0;
+  for(let i=0;i<n;i++){
+    const x=b[i].c;
+    er[i]= i? x*kr+er[i-1]*(1-kr) : x;
+    el[i]= i? x*kl+el[i-1]*(1-kl) : x;
+    if(i){ const d=x-b[i-1].c; g=a*Math.max(d,0)+(1-a)*g; p=a*Math.max(-d,0)+(1-a)*p; }
+    rsi[i]=100-100/(1+g/(p||1e-12));
+    if(i && er[i]>el[i] && er[i-1]<=el[i-1] && rsi[i]<c.rsiMax) sig[i]=true;
+  }
+  return {er,el,rsi,sig};
+}
+
+/* ---------------- Moteur (identique au script Python) ---------------- */
+class Moteur{
+  constructor(c){ Object.assign(this,{c,capital:c.capital,pos:null,trades:[],jour:null,capJour:c.capital,
+    pertes:0,pauseJusqua:0,bloque:false,fraisTot:0}); }
+  nouveauJour(t){ const j=new Date(t).toISOString().slice(0,10);
+    if(j!==this.jour){ this.jour=j; this.capJour=this.capital+(this.pos?this.pos.mise:0); this.bloque=false; } }
+  enPause(t){ return this.bloque || t<this.pauseJusqua; }
+  peutEntrer(t){ this.nouveauJour(t); return !this.pos && !this.enPause(t); }
+  entrer(t,prix){
+    const c=this.c, px=prix*(1+c.glis), mise=this.capital*c.part;
+    this.fraisTot+=mise*c.frais; this.capital-=mise;
+    this.pos={t,prix:px,qte:mise*(1-c.frais)/px,mise,tp:px*(1+c.tp),sl:px*(1-c.sl)};
+  }
+  verifier(t,h,l,cl){
+    const p=this.pos; if(!p) return null;
+    if(l<=p.sl) return this.sortir(t,p.sl,"Stop-loss");
+    if(h>=p.tp) return this.sortir(t,p.tp,"Take-profit");
+    if((t-p.t)/60000>=this.c.duree) return this.sortir(t,cl,"Durée max");
+    return null;
+  }
+  sortir(t,prix,raison){
+    const c=this.c,p=this.pos,px=prix*(1-c.glis),brut=p.qte*px,recu=brut*(1-c.frais);
+    this.fraisTot+=brut*c.frais; this.capital+=recu;
+    const tr={entree:p.t,sortie:t,raison,pe:p.prix,ps:px,pnl:recu-p.mise,capital:this.capital};
+    this.trades.push(tr); this.pos=null;
+    this.pertes = tr.pnl<0 ? this.pertes+1 : 0;
+    if(this.pertes>=c.pertesMax){ this.pauseJusqua=t+c.pauseMin*60000; this.pertes=0; }
+    if(this.capital<=this.capJour*(1-c.pj)) this.bloque=true;
+    return tr;
+  }
+  // Traite la bougie i (déjà clôturée) : même logique que le backtest Python
+  etape(b,ind,i){
+    const k=b[i];
+    if(this.pos) return {sortie:this.verifier(k.t,k.h,k.l,k.c)};
+    if(ind.sig[i-1] && this.peutEntrer(k.t)){
+      this.entrer(k.t,k.o);
+      return {entree:true, sortie:this.verifier(k.t,k.h,k.l,k.c)};
+    }
+    return {};
+  }
+}
+
+/* ---------------- Données : Binance en direct, sinon démo ---------------- */
+const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
+let mode=null, bougies=[];
+
+async function chargerBinance(limit=500){
+  for(const s of SOURCES){
+    try{
+      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),6000);
+      const r=await fetch(`${s}/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=${limit}`,{signal:ctl.signal});
+      clearTimeout(to);
+      if(!r.ok) continue;
+      const j=await r.json();
+      return j.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4]}));
+    }catch(e){}
+  }
+  return null;
+}
+
+// Marché simulé : marche aléatoire avec phases de tendance
+let graine=Date.now()%100000;
+function alea(){ graine=(graine*16807)%2147483647; return graine/2147483647; }
+function gauss(){ return Math.sqrt(-2*Math.log(alea()||1e-9))*Math.cos(2*Math.PI*alea()); }
+let tendance=0;
+function bougieDemo(prec,t){
+  if(alea()<0.01) tendance=(alea()-0.5)*0.0004;
+  const o=prec?prec.c:65000, c=o*Math.exp(tendance+gauss()*0.0008);
+  return {t,o,c,h:Math.max(o,c)*(1+Math.abs(gauss())*0.0004),l:Math.min(o,c)*(1-Math.abs(gauss())*0.0004)};
+}
+function genererDemo(n){
+  const out=[]; let t=Math.floor(Date.now()/60000)*60000-n*60000;
+  for(let i=0;i<n;i++){ out.push(bougieDemo(out[i-1],t)); t+=60000; }
+  return out;
+}
+
+/* ---------------- État de l'appli ---------------- */
+let M=new Moteur(cfg()), enMarche=false, minuteur=null, dernierTraite=null, marqueurs=[];
+const $=id=>document.getElementById(id);
+const eur=v=>(v>=0?"+":"")+v.toFixed(2);
+const fmtPrix=v=>v.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const heure=t=>new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+
+function toast(msg){ const e=$("toast"); e.textContent=msg; e.classList.add("vu"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("vu"),2600); }
+
+function majStatut(){
+  const s=$("statut"); s.className="statut "+(mode||"");
+  $("statutTxt").textContent= mode==="live" ? "Prix réels Binance" : mode==="demo" ? "Mode démo (accéléré)" : "Connexion…";
+}
+
+/* ---------------- Boucle ---------------- */
+async function tick(){
+  if(mode==="live"){
+    const d=await chargerBinance(200);
+    if(d){ fusionner(d); }
+  } else {
+    bougies.push(bougieDemo(bougies[bougies.length-1], bougies[bougies.length-1].t+60000));
+    if(bougies.length>600) bougies.shift();
+  }
+  traiter(); dessiner(); majUI();
+}
+
+function fusionner(d){
+  const dernier=bougies.length?bougies[bougies.length-1].t:0;
+  for(const k of d){
+    if(k.t>dernier) bougies.push(k);
+    else if(k.t===dernier) bougies[bougies.length-1]=k;
+  }
+  if(bougies.length>600) bougies=bougies.slice(-600);
+}
+
+function traiter(){
+  if(!enMarche) return;
+  // En direct, la dernière bougie est encore en cours : on ne traite que les bougies clôturées
+  const fin = mode==="live" ? bougies.length-2 : bougies.length-1;
+  const ind=indicateurs(bougies,M.c);
+  for(let i=Math.max(M.c.emaL+1,1);i<=fin;i++){
+    if(dernierTraite!==null && bougies[i].t<=dernierTraite) continue;
+    dernierTraite=bougies[i].t;
+    const r=M.etape(bougies,ind,i);
+    if(r.entree){ const pe=r.sortie?r.sortie.pe:M.pos.prix; marqueurs.push({t:bougies[i].t,p:pe,type:"a"}); toast("▲ Achat simulé à "+fmtPrix(pe)); }
+    if(r.sortie){ marqueurs.push({t:r.sortie.sortie,p:r.sortie.ps,type:r.sortie.pnl>=0?"g":"p"});
+      toast((r.sortie.pnl>=0?"✓ ":"✕ ")+r.sortie.raison+" "+eur(r.sortie.pnl)+" $"); }
+  }
+}
+
+/* ---------------- Affichage ---------------- */
+function majUI(){
+  if(!bougies.length) return;
+  const der=bougies[bougies.length-1], ref=bougies[Math.max(0,bougies.length-60)];
+  $("prix").textContent=fmtPrix(der.c)+" $";
+  const v=(der.c/ref.c-1)*100; const ev=$("var");
+  ev.textContent=(v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(2)+" % sur 1 h"; ev.className="var "+(v>=0?"pos":"neg");
+
+  const valeur=M.capital+(M.pos? M.pos.qte*der.c*(1-M.c.frais):0);
+  $("capital").textContent=valeur.toFixed(2)+" $";
+  const tot=valeur-M.c.capital; const et=$("total"); et.textContent=eur(tot)+" $"; et.className="val "+(tot>=0?"pos":"neg");
+  M.nouveauJour(der.t);
+  const j=valeur-M.capJour; const ej=$("jour"); ej.textContent=eur(j)+" $"; ej.className="val "+(j>=0?"pos":"neg");
+  const g=M.trades.filter(t=>t.pnl>0).length;
+  $("nb").textContent=M.trades.length+" · "+(M.trades.length?Math.round(g/M.trades.length*100):0)+" %";
+  $("frais").textContent="-"+M.fraisTot.toFixed(2)+" $";
+
+  const eb=$("etatBot");
+  if(!enMarche){ eb.textContent="Arrêté"; eb.className="val"; }
+  else if(M.bloque){ eb.textContent="Stoppé (perte max jour)"; eb.className="val neg"; }
+  else if(der.t<M.pauseJusqua){ eb.textContent="Pause jusqu'à "+heure(M.pauseJusqua); eb.className="val neg"; }
+  else if(M.pos){ eb.textContent="En position"; eb.className="val pos"; }
+  else { eb.textContent="Surveille le marché"; eb.className="val"; }
+
+  // Position
+  const pz=$("position");
+  if(M.pos){
+    const p=M.pos, pnl=p.qte*der.c*(1-M.c.frais)-p.mise;
+    const pct=Math.min(100,Math.max(0,(der.c-p.sl)/(p.tp-p.sl)*100));
+    pz.innerHTML=`
+      <div class="ligne"><span>Achat à</span><b>${fmtPrix(p.prix)} $</b></div>
+      <div class="ligne"><span>Mise</span><b>${p.mise.toFixed(2)} $</b></div>
+      <div class="ligne"><span>Résultat si vente maintenant</span><b class="${pnl>=0?"pos":"neg"}">${eur(pnl)} $</b></div>
+      <div class="barre"><div class="curseur" style="left:${pct}%"></div></div>
+      <div class="ligne" style="font-size:12px;color:var(--mut)"><span>SL ${fmtPrix(p.sl)}</span><span>TP ${fmtPrix(p.tp)}</span></div>`;
+  } else pz.innerHTML=`<div class="etat">${enMarche?"Aucune position — le bot attend un signal.":"Bot arrêté. Appuie sur « Démarrer »."}</div>`;
+
+  // Trades
+  const tz=$("trades");
+  if(!M.trades.length) tz.innerHTML='<div class="vide">Pas encore de trade.</div>';
+  else tz.innerHTML=M.trades.slice(-15).reverse().map(t=>`
+    <div class="trade"><div><div>${heure(t.entree)} → ${heure(t.sortie)}</div><div class="r">${t.raison} · ${fmtPrix(t.pe)} → ${fmtPrix(t.ps)}</div></div>
+    <div class="p ${t.pnl>=0?"pos":"neg"}">${eur(t.pnl)} $</div></div>`).join("");
+}
+
+function dessiner(){
+  const cv=$("graph"), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  if(cv.width!==W*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
+  const x=cv.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
+  if(bougies.length<30) return;
+  const N=Math.min(120,bougies.length), b=bougies.slice(-N), ind=indicateurs(bougies,M.c), off=bougies.length-N;
+  let mn=Infinity,mx=-Infinity; b.forEach(k=>{mn=Math.min(mn,k.l);mx=Math.max(mx,k.h);});
+  if(M.pos){ mn=Math.min(mn,M.pos.sl); mx=Math.max(mx,M.pos.tp); }
+  const pad=(mx-mn)*0.08; mn-=pad; mx+=pad;
+  const gx=i=>i/(N-1)*(W-48), gy=v=>H-((v-mn)/(mx-mn))*H;
+  // grille
+  x.strokeStyle="#26303c"; x.lineWidth=1; x.fillStyle="#8a97a6"; x.font="10px sans-serif"; x.textAlign="left";
+  for(let k=0;k<=3;k++){ const v=mn+(mx-mn)*k/3, y=gy(v); x.beginPath(); x.moveTo(0,y); x.lineTo(W-48,y); x.stroke(); x.fillText(Math.round(v).toLocaleString("fr-FR"),W-44,Math.min(H-2,Math.max(10,y+3))); }
+  // TP / SL
+  if(M.pos){ [[M.pos.tp,"#22c55e"],[M.pos.sl,"#ef4444"],[M.pos.prix,"#8a97a6"]].forEach(([v,c])=>{ x.setLineDash([4,4]); x.strokeStyle=c; x.beginPath(); x.moveTo(0,gy(v)); x.lineTo(W-48,gy(v)); x.stroke(); }); x.setLineDash([]); }
+  const ligne=(arr,c,w)=>{ x.strokeStyle=c; x.lineWidth=w; x.beginPath(); arr.forEach((v,i)=>i?x.lineTo(gx(i),gy(v)):x.moveTo(gx(i),gy(v))); x.stroke(); };
+  ligne(ind.el.slice(off),"#a78bfa",1.5);
+  ligne(ind.er.slice(off),"#3b82f6",1.5);
+  ligne(b.map(k=>k.c),"#e8edf3",2);
+  // marqueurs
+  const t0=b[0].t;
+  marqueurs.filter(m=>m.t>=t0).forEach(m=>{
+    const i=(m.t-t0)/60000, px=gx(i), py=gy(m.p);
+    x.fillStyle= m.type==="a" ? "#22c55e" : m.type==="g" ? "#22c55e" : "#ef4444";
+    x.beginPath();
+    if(m.type==="a"){ x.moveTo(px,py+4); x.lineTo(px-6,py+14); x.lineTo(px+6,py+14); x.closePath(); }
+    else x.arc(px,py,5,0,Math.PI*2);
+    x.fill();
+  });
+}
+
+/* ---------------- Backtest ---------------- */
+async function lancerBacktest(){
+  $("feuilleBacktest").classList.add("ouverte");
+  $("resBacktest").innerHTML="Calcul…";
+  let b, source;
+  if(mode==="live"){ b=await chargerBinance(1000); source="1 000 dernières minutes de prix réels (~16 h)"; }
+  if(!b){ b=genererDemo(7*1440); source="7 jours de marché simulé"; }
+  const c=cfg(), m=new Moteur(c), ind=indicateurs(b,c);
+  for(let i=c.emaL+1;i<b.length;i++) m.etape(b,ind,i);
+  if(m.pos){ const d=b[b.length-1]; m.sortir(d.t,d.c,"Fin"); }
+  const n=m.trades.length, g=m.trades.filter(t=>t.pnl>0);
+  const res=(m.capital/c.capital-1)*100;
+  let pic=c.capital, dd=0; m.trades.forEach(t=>{ pic=Math.max(pic,t.capital); dd=Math.min(dd,t.capital/pic-1); });
+  const btc=(b[b.length-1].c/b[0].c-1)*100;
+  const L=(a,v,cl="")=>`<div class="ligne"><span>${a}</span><b class="${cl}">${v}</b></div>`;
+  $("resBacktest").innerHTML=
+    `<div class="note" style="margin:0 0 8px">Données : ${source}</div>`+
+    L("Variation du BTC",(btc>=0?"+":"")+btc.toFixed(2)+" %")+
+    L("Nombre de trades",n)+
+    L("Taux de réussite",(n?Math.round(g.length/n*100):0)+" %")+
+    L("Frais payés","-"+m.fraisTot.toFixed(2)+" $","neg")+
+    L("Pire baisse",dd*100<0?(dd*100).toFixed(1)+" %":"0 %","neg")+
+    L("Capital final",m.capital.toFixed(2)+" $")+
+    L("Résultat",(res>=0?"+":"")+res.toFixed(2)+" %",res>=0?"pos":"neg")+
+    `<div class="verdict ${res>=0?"pos":"neg"}">${res>=0?"Rentable sur cette période — à confirmer sur d'autres périodes avant toute conclusion.":"Perdant sur cette période : en réel, cette stratégie t'aurait coûté de l'argent."}</div>`+
+    `<div class="note">Un résultat positif sur une seule période ne prouve rien. Il faut plusieurs semaines de résultats positifs, frais compris.</div>`;
+}
+
+/* ---------------- Boutons ---------------- */
+$("btnStart").onclick=()=>{
+  enMarche=!enMarche;
+  const b=$("btnStart"); b.textContent=enMarche?"Arrêter le bot":"Démarrer le bot"; b.classList.toggle("stop",enMarche);
+  if(enMarche){ dernierTraite=bougies.length?bougies[bougies.length-2]?.t ?? null:null; toast("Bot démarré"); }
+  else toast("Bot arrêté");
+  majUI();
+};
+$("btnBacktest").onclick=lancerBacktest;
+$("btnFermerB").onclick=()=>$("feuilleBacktest").classList.remove("ouverte");
+$("btnReglages").onclick=()=>{
+  for(const k in R) $("r_"+k).value=R[k];
+  $("feuilleReglages").classList.add("ouverte");
+};
+$("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
+$("btnSauverR").onclick=()=>{
+  for(const k in R){ const v=parseFloat($("r_"+k).value); if(isFinite(v)&&v>0) R[k]=v; }
+  try{ localStorage.setItem("scalp_reglages",JSON.stringify(R)); }catch(e){}
+  M=new Moteur(cfg()); marqueurs=[]; dernierTraite=bougies.length?bougies[bougies.length-1].t:null;
+  $("feuilleReglages").classList.remove("ouverte"); toast("Réglages enregistrés"); majUI(); dessiner();
+};
+document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
+window.addEventListener("resize",dessiner);
+
+/* ---------------- Démarrage ---------------- */
+(async()=>{
+  const d=await chargerBinance(500);
+  if(d && d.length){ mode="live"; bougies=d; }
+  else { mode="demo"; bougies=genererDemo(300); }
+  majStatut(); dessiner(); majUI();
+  minuteur=setInterval(tick, mode==="live"?10000:1500);
+})();
+})();
+</script>
+</body>
+</html>
