@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Bot 1 min — Elliott + Fibo</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#141a22; --card2:#1b232d; --line:#26303c;
+    --txt:#e8edf3; --mut:#8a97a6; --vert:#22c55e; --rouge:#ef4444;
+    --jaune:#f5b70a; --bleu:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px)}
+  .onglets{display:flex;background:var(--card2);border-radius:12px;padding:4px;margin-bottom:12px}
+  .onglets a{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;color:var(--mut)}
+  .onglets a.actif{background:var(--card);color:var(--txt);box-shadow:0 1px 3px #0006}
+  .bandeau{background:#2a2108;color:var(--jaune);border:1px solid #4a3a0c;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;text-align:center}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px}
+  .paire{font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.4px}
+  .prix{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .var{font-size:13px;font-weight:600}
+  .badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .statut{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--card2);white-space:nowrap}
+  .pastille{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+  .live .pastille{background:var(--vert);box-shadow:0 0 0 3px #22c55e33}
+  .demo .pastille{background:var(--jaune)}
+  .carte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .grille{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat .lib{font-size:12px;color:var(--mut)}
+  .stat .val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .grand .val{font-size:26px}
+  .pos{color:var(--vert)} .neg{color:var(--rouge)} .mut{color:var(--mut)}
+  canvas{width:100%;height:210px;display:block}
+  .legende{display:flex;gap:12px;font-size:11.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+  .legende i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  h2{font-size:13px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .jauge{height:12px;border-radius:6px;background:var(--card2);overflow:hidden;display:flex;margin:8px 0 4px}
+  .jauge .a{background:var(--vert);transition:width .4s} .jauge .v{background:var(--rouge);flex:1}
+  .jl{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600}
+  .tend{margin-top:10px;font-size:14px}
+  .etat{font-size:14px;color:var(--mut)}
+  .position .ligne{display:flex;justify-content:space-between;padding:4px 0;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;letter-spacing:.4px}
+  .tag.long{background:#0f2e1a;color:var(--vert)} .tag.short{background:#3a1212;color:var(--rouge)}
+  .trade{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .trade:first-child{border-top:0}
+  .trade .r{font-size:12px;color:var(--mut)}
+  .trade .p{font-weight:700;font-variant-numeric:tabular-nums}
+  .vide{color:var(--mut);font-size:13.5px;text-align:center;padding:10px 0}
+  .actions{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:8px}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px;color:#fff;cursor:pointer}
+  button:disabled{opacity:.5}
+  .principal{flex:1;background:var(--vert);color:#04210f;font-size:16px}
+  .principal.stop{background:var(--rouge);color:#fff}
+  .second{background:var(--card2);border:1px solid var(--line);min-width:50px}
+  .feuille{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:10}
+  .feuille.ouverte{display:flex}
+  .panneau{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
+  .panneau h3{font-size:18px;margin-bottom:6px}
+  .panneau h4{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 4px}
+  .champ{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);gap:10px}
+  .champ label{font-size:14px} .champ small{display:block;color:var(--mut);font-size:12px}
+  .champ input,.champ select{width:110px;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;text-align:right}
+  .panneau .boutons{display:flex;gap:10px;margin-top:16px}
+  .panneau .boutons button{flex:1}
+  .res .ligne{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;gap:10px}
+  .verdict{margin-top:12px;padding:12px;border-radius:10px;font-size:14px;font-weight:600}
+  .verdict.neg{background:#3a1212} .verdict.pos{background:#0f2e1a} .verdict.neutre{background:#2a2108;color:var(--jaune)}
+  .note{font-size:12.5px;color:var(--mut);margin-top:10px}
+  .progres{height:8px;background:var(--card2);border-radius:4px;overflow:hidden;margin:12px 0}
+  .progres div{height:100%;background:var(--bleu);width:0;transition:width .2s}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:6px}
+  th{color:var(--mut);font-weight:600;text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-120px);background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;transition:transform .3s;z-index:20;white-space:nowrap}
+  .toast.vu{transform:translateX(-50%) translateY(0)}
+  td+td{white-space:nowrap}
+</style>
+</head>
+<body>
+
+<nav class="onglets"><a class="actif" href="ultra.html">1 min</a><a href="index.html">Court terme</a><a href="long-terme.html">Long terme</a></nav>
+<div class="bandeau">SIMULATION — argent virtuel uniquement, aucun ordre réel</div>
+
+<header>
+  <div>
+    <div class="paire" id="paire">BTC / USDT</div>
+    <div class="prix" id="prix">—</div>
+    <div class="var" id="var">&nbsp;</div>
+  </div>
+  <div class="badges">
+    <div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Connexion…</span></div>
+  </div>
+</header>
+
+<div class="carte">
+  <h2>Analyse en direct</h2>
+  <div class="position">
+    <div class="ligne"><span>Tendance (EMA 200 · EMA 9/21)</span><b id="aTend">—</b></div>
+    <div class="ligne"><span>RSI 14</span><b id="aRsi">—</b></div>
+    <div class="ligne"><span>Structure d'Elliott</span><b id="aStruct" style="text-align:right">—</b></div>
+    <div class="ligne"><span>Zone Fibonacci vague 2</span><b id="aFibo">—</b></div>
+  </div>
+</div>
+
+<div class="carte">
+  <div class="grille">
+    <div class="stat grand"><div class="lib">Capital virtuel</div><div class="val" id="capital">—</div></div>
+    <div class="stat grand"><div class="lib">Résultat total</div><div class="val" id="total">—</div></div>
+    <div class="stat"><div class="lib">Aujourd'hui</div><div class="val" id="jour">—</div></div>
+    <div class="stat"><div class="lib">Trades · réussite</div><div class="val" id="nb">—</div></div>
+    <div class="stat"><div class="lib">Frais payés</div><div class="val neg" id="frais">—</div></div>
+    <div class="stat"><div class="lib">État du bot</div><div class="val" id="etatBot" style="font-size:15px">Arrêté</div></div>
+  </div>
+</div>
+
+<div class="carte">
+  <canvas id="graph" style="height:240px"></canvas>
+  <div class="legende">
+    <span><i style="background:#e8edf3"></i>Prix</span>
+    <span><i style="background:var(--jaune)"></i>EMA 200</span>
+    <span><i style="background:#64748b"></i>Vagues (zigzag)</span>
+    <span><i style="background:#3b82f633;height:10px"></i>Zone Fibo</span>
+  </div>
+</div>
+
+<div class="carte position">
+  <h2>Position</h2>
+  <div id="position"><div class="etat">Bot arrêté. Appuie sur « Démarrer ».</div></div>
+</div>
+
+<div class="carte">
+  <h2>Derniers trades</h2>
+  <div id="trades"><div class="vide">Pas encore de trade.</div></div>
+</div>
+
+<div class="actions">
+  <button class="second" id="btnOptim" aria-label="Vérifier">🔬</button>
+  <button class="principal" id="btnStart">Démarrer</button>
+  <button class="second" id="btnReglages" aria-label="Réglages">⚙️</button>
+</div>
+
+<div class="feuille" id="feuilleReglages">
+  <div class="panneau">
+    <h3>Réglages</h3>
+    <h4>Général</h4>
+    <div class="champ"><label>Unité de temps</label>
+      <select id="r_tf"><option value="1m">1 minute</option><option value="3m">3 minutes</option><option value="5m">5 minutes</option></select></div>
+    <div class="champ"><label>Sens</label>
+      <select id="r_sens"><option value="both">Hausse + baisse</option><option value="long">Hausse seulement</option></select></div>
+    <div class="champ"><label>Capital de départ<small>USDT virtuels</small></label><input type="number" id="r_capital" step="10"></div>
+    <div class="champ"><label>Frais par ordre<small>% (Binance ≈ 0,1)</small></label><input type="number" id="r_frais" step="0.01"></div>
+    <div class="champ"><label>Perte max par jour<small>%</small></label><input type="number" id="r_pj" step="0.5"></div>
+    <h4>Elliott + Fibonacci</h4>
+    <div class="champ"><label>Force des pivots<small>bougies de chaque côté</small></label><input type="number" id="r_P" step="1"></div>
+    <div class="champ"><label>Taille mini vague 1<small>× volatilité (ATR)</small></label><input type="number" id="r_minAtr" step="0.5"></div>
+    <div class="champ"><label>Retracement mini<small>Fibo (0,382 / 0,5 / 0,618)</small></label><input type="number" id="r_fibMin" step="0.001"></div>
+    <div class="champ"><label>Retracement maxi<small>Fibo (0,618 / 0,786)</small></label><input type="number" id="r_fibMax" step="0.001"></div>
+    <div class="champ"><label>Objectif vague 3<small>extension Fibo (1,272 / 1,618)</small></label><input type="number" id="r_ext" step="0.001"></div>
+    <h4>RSI</h4>
+    <div class="champ"><label>Rebond haussier<small>RSI repasse au-dessus de</small></label><input type="number" id="r_rsiBas" step="5"></div>
+    <div class="champ"><label>Rebond baissier<small>RSI repasse en dessous de</small></label><input type="number" id="r_rsiHaut" step="5"></div>
+    <div class="boutons">
+      <button class="second" id="btnFermerR">Annuler</button>
+      <button class="principal" id="btnSauverR">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="feuille" id="feuilleRes">
+  <div class="panneau res">
+    <h3 id="resTitre">Résultat</h3>
+    <div id="resCorps"></div>
+    <div class="boutons" id="resBoutons"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const TFMS={"1m":60000,"3m":180000,"5m":300000};
+const DEFAUT={tf:"1m", sens:"both", capital:100, frais:0.1, pj:3, P:5, minAtr:3, fibMin:0.5, fibMax:0.786, ext:1.618, rsiBas:40, rsiHaut:60};
+let R={...DEFAUT};
+try{ const s=JSON.parse(localStorage.getItem("ultra_v1")); if(s) R={...DEFAUT,...s}; }catch(e){}
+const sauver=()=>{ try{ localStorage.setItem("ultra_v1",JSON.stringify(R)); }catch(e){} };
+const cfgDe=r=>({...r, ms:TFMS[r.tf], P:r.P|0, part:0.95, frais:r.frais/100, glis:0.0002, pj:r.pj/100, pertesMax:4, pauseBougies:15, dureeMax:120});
+
+/* =========================================================
+   INDICATEURS : EMA 9/21/200, RSI 14, ATR 14, pivots (zigzag)
+   puis détection « vague 1 → retracement Fibo vague 2 → entrée vague 3 »
+   Tout est calculé avec l'information disponible à la clôture de chaque bougie (pas de triche).
+   ========================================================= */
+function ema(b,n){ const k=2/(n+1), o=new Float64Array(b.length); for(let i=0;i<b.length;i++) o[i]=i?b[i].c*k+o[i-1]*(1-k):b[i].c; return o; }
+function indicateurs(b,c){
+  const n=b.length, eR=ema(b,9), eL=ema(b,21), eT=ema(b,200);
+  const rsi=new Float64Array(n), atr=new Float64Array(n);
+  let g=0,p=0;
+  for(let i=0;i<n;i++){
+    if(i){ const d=b[i].c-b[i-1].c; g=(g*13+Math.max(d,0))/14; p=(p*13+Math.max(-d,0))/14; }
+    rsi[i]=100-100/(1+g/(p||1e-12));
+    const k=b[i], tr=i?Math.max(k.h-k.l,Math.abs(k.h-b[i-1].c),Math.abs(k.l-b[i-1].c)):k.h-k.l;
+    atr[i]=i?(atr[i-1]*13+tr)/14:tr;
+  }
+  const P=c.P, sig=new Int8Array(n), sl=new Float64Array(n), tp=new Float64Array(n);
+  const etat=new Array(n), pivots=[];
+  let H=null, L=null;              // derniers pivots confirmés {i, prix}
+  let creux=Infinity, sommet=-Infinity, utiliseH=-1, utiliseL=-1;
+  for(let i=0;i<n;i++){
+    // pivot confirmé à i pour la bougie j = i-P
+    const j=i-P;
+    if(j>=P){
+      let estH=true, estL=true;
+      for(let q=j-P;q<=j+P;q++){ if(q===j) continue; if(b[q].h>=b[j].h) estH=false; if(b[q].l<=b[j].l) estL=false; }
+      if(estH){ H={i:j,prix:b[j].h}; pivots.push({i:j,prix:b[j].h,t:"H"}); creux=Infinity; for(let q=j;q<=i;q++) creux=Math.min(creux,b[q].l); }
+      if(estL){ L={i:j,prix:b[j].l}; pivots.push({i:j,prix:b[j].l,t:"L"}); sommet=-Infinity; for(let q=j;q<=i;q++) sommet=Math.max(sommet,b[q].h); }
+    }
+    creux=Math.min(creux,b[i].l); sommet=Math.max(sommet,b[i].h);
+    const e={};
+    if(H && L && i>=200){
+      const v1=H.prix-L.prix, rUp=(rsi[i-1]<=c.rsiBas&&rsi[i]>c.rsiBas)||(eR[i-1]<=eL[i-1]&&eR[i]>eL[i]), rDn=(rsi[i-1]>=c.rsiHaut&&rsi[i]<c.rsiHaut)||(eR[i-1]>=eL[i-1]&&eR[i]<eL[i]);
+      if(L.i<H.i && v1>=c.minAtr*atr[i]){            // vague 1 haussière A=L → B=H
+        const r=(H.prix-creux)/v1;
+        e.struct="H"; e.A=L.prix; e.B=H.prix; e.r=r; e.ext=creux;
+        const zone=r>=c.fibMin && r<=c.fibMax && creux>L.prix, tend=b[i].c>eT[i];
+        e.zone=zone;
+        if(zone && tend && rUp && H.i!==utiliseH){ sig[i]=1; sl[i]=L.prix-0.1*atr[i]; tp[i]=creux+c.ext*v1; utiliseH=H.i; }
+      } else if(H.i<L.i && v1>=c.minAtr*atr[i]){     // vague 1 baissière A=H → B=L
+        const r=(sommet-L.prix)/v1;
+        e.struct="B"; e.A=H.prix; e.B=L.prix; e.r=r; e.ext=sommet;
+        const zone=r>=c.fibMin && r<=c.fibMax && sommet<H.prix, tend=b[i].c<eT[i];
+        e.zone=zone;
+        if(c.sens==="both" && zone && tend && rDn && L.i!==utiliseL){ sig[i]=-1; sl[i]=H.prix+0.1*atr[i]; tp[i]=sommet-c.ext*v1; utiliseL=L.i; }
+      }
+    }
+    etat[i]=e;
+  }
+  return {eR,eL,eT,rsi,atr,sig,sl,tp,etat,pivots,debut:201};
+}
+
+/* =========================================================
+   MOTEUR long / short (sans levier)
+   ========================================================= */
+class Moteur{
+  constructor(c){ Object.assign(this,{c,capital:c.capital,pos:null,trades:[],jour:null,capJour:c.capital,pertes:0,pauseJusqua:0,bloque:false,fraisTot:0}); }
+  nouveauJour(t){ const j=new Date(t).toISOString().slice(0,10); if(j!==this.jour){ this.jour=j; this.capJour=this.capital+(this.pos?this.pos.mise:0); this.bloque=false; } }
+  peutEntrer(t){ this.nouveauJour(t); return !this.pos && !this.bloque && t>=this.pauseJusqua; }
+  entrer(t,prix,dir,sl,tp){
+    const c=this.c, px=prix*(1+dir*c.glis);
+    if((dir===1 && (px<=sl||px>=tp)) || (dir===-1 && (px>=sl||px<=tp))) return false;   // le prix a déjà dépassé le stop ou l'objectif
+    const mise=this.capital*c.part; this.fraisTot+=mise*c.frais; this.capital-=mise;
+    this.pos={t,dir,prix:px,qte:mise*(1-c.frais)/px,mise,sl,tp,n:0}; return true;
+  }
+  verifier(k){
+    const p=this.pos; if(!p) return null; p.n++;
+    if(p.dir===1){
+      if(k.l<=p.sl) return this.sortir(k.t,Math.min(p.sl,k.o),"Stop (sous la vague 1)");
+      if(k.h>=p.tp) return this.sortir(k.t,p.tp,"Objectif vague 3");
+    } else {
+      if(k.h>=p.sl) return this.sortir(k.t,Math.max(p.sl,k.o),"Stop (au-dessus vague 1)");
+      if(k.l<=p.tp) return this.sortir(k.t,p.tp,"Objectif vague 3");
+    }
+    if(p.n>=this.c.dureeMax) return this.sortir(k.t,k.c,"Durée max");
+    return null;
+  }
+  sortir(t,prix,raison){
+    const c=this.c,p=this.pos,px=prix*(1-p.dir*c.glis),fs=p.qte*px*c.frais;
+    const recu=p.mise*(1-c.frais)+p.dir*p.qte*(px-p.prix)-fs;
+    this.fraisTot+=fs; this.capital+=recu;
+    const tr={entree:p.t,sortie:t,dir:p.dir,raison,pe:p.prix,ps:px,pnl:recu-p.mise,capital:this.capital};
+    this.trades.push(tr); this.pos=null;
+    this.pertes=tr.pnl<0?this.pertes+1:0;
+    if(this.pertes>=c.pertesMax){ this.pauseJusqua=t+c.pauseBougies*c.ms; this.pertes=0; }
+    if(this.capital<=this.capJour*(1-c.pj)) this.bloque=true;
+    return tr;
+  }
+  valeur(x){ const p=this.pos; if(!p) return this.capital; return this.capital+p.mise*(1-this.c.frais)+p.dir*p.qte*(x-p.prix)-p.qte*x*this.c.frais; }
+  etape(b,ind,i){
+    const k=b[i];
+    if(this.pos) return {sortie:this.verifier(k)};
+    const s=ind.sig[i-1];
+    if(s && this.peutEntrer(k.t) && this.entrer(k.t,k.o,s,ind.sl[i-1],ind.tp[i-1])) return {entree:s, sortie:this.verifier(k)};
+    return {};
+  }
+}
+function simuler(b,ind,c,de,a){
+  const m=new Moteur(c);
+  for(let i=Math.max(de,ind.debut);i<a;i++) m.etape(b,ind,i);
+  if(m.pos){ const d=b[a-1]; m.sortir(d.t,d.c,"Fin du test"); }
+  const n=m.trades.length, g=m.trades.filter(t=>t.pnl>0).length;
+  let pic=c.capital,dd=0; m.trades.forEach(t=>{pic=Math.max(pic,t.capital);dd=Math.min(dd,t.capital/pic-1);});
+  return {m,n,reussite:n?g/n:0,res:m.capital/c.capital-1,dd,frais:m.fraisTot};
+}
+
+/* =========================================================
+   DONNÉES
+   ========================================================= */
+const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
+let mode=null, bougies=[];
+async function paquet(tf,limit,fin){
+  for(const s of SOURCES){
+    try{ const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
+      const r=await fetch(`${s}/api/v3/klines?symbol=BTCUSDT&interval=${tf}&limit=${limit}`+(fin?`&endTime=${fin}`:""),{signal:ctl.signal});
+      clearTimeout(to); if(!r.ok) continue;
+      return (await r.json()).map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4]}));
+    }catch(e){}
+  }
+  return null;
+}
+async function charger(tf,total,prog){
+  let out=[],fin=null;
+  while(out.length<total){
+    const p=await paquet(tf,Math.min(1000,total-out.length),fin);
+    if(!p) return out.length?out:null;
+    if(!p.length) break;
+    out=p.concat(out); fin=p[0].t-1;
+    if(prog) prog(out.length/total);
+  }
+  return out;
+}
+let graine=(Date.now()%100000)+7;
+function alea(){ graine=(graine*16807)%2147483647; return graine/2147483647; }
+function gauss(){ return Math.sqrt(-2*Math.log(alea()||1e-9))*Math.cos(2*Math.PI*alea()); }
+let derive=0;
+function bougieDemo(prec,t,ms){
+  const sig=0.0008*Math.sqrt(ms/60000);
+  if(alea()<0.02) derive=(alea()-0.5)*sig*0.5;
+  const o=prec?prec.c:72000, c=o*Math.exp(derive+gauss()*sig);
+  return {t,o,c,h:Math.max(o,c)*(1+Math.abs(gauss())*sig*0.5),l:Math.min(o,c)*(1-Math.abs(gauss())*sig*0.5)};
+}
+function genererDemo(n,ms){ const out=[]; let t=Math.floor(Date.now()/ms)*ms-n*ms; for(let i=0;i<n;i++){ out.push(bougieDemo(out[i-1],t,ms)); t+=ms; } return out; }
+
+/* =========================================================
+   APPLI
+   ========================================================= */
+let C=cfgDe(R), M=new Moteur(C), enMarche=false, minuteur=null, dernierTraite=null, marqueurs=[];
+const $=id=>document.getElementById(id);
+const sgn=v=>(v>=0?"+":"")+v.toFixed(2);
+const pct=v=>(v>=0?"+":"")+(v*100).toFixed(1)+" %";
+const fp=v=>v.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fp0=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:0});
+const heure=t=>new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+function toast(m){ const e=$("toast"); e.textContent=m; e.classList.add("vu"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("vu"),2600); }
+
+async function demarrerFlux(){
+  clearInterval(minuteur);
+  const d=await charger(C.tf,600);
+  if(d&&d.length){ mode="live"; bougies=d; } else { mode="demo"; bougies=genererDemo(600,C.ms); }
+  dernierTraite=enMarche?bougies[bougies.length-2].t:null;
+  $("statut").className="statut "+mode;
+  $("statutTxt").textContent=mode==="live"?"Prix réels Binance":"Mode démo (accéléré)";
+  $("paire").textContent="BTC / USDT · "+{"1m":"1 min","3m":"3 min","5m":"5 min"}[C.tf];
+  rafraichir();
+  minuteur=setInterval(tick, mode==="live"?10000:1200);
+}
+async function tick(){
+  if(mode==="live"){
+    const d=await paquet(C.tf,20);
+    if(d){ const der=bougies[bougies.length-1].t;
+      for(const k of d){ if(k.t>der) bougies.push(k); else if(k.t===der) bougies[bougies.length-1]=k; }
+      if(bougies.length>900) bougies=bougies.slice(-900); }
+  } else { bougies.push(bougieDemo(bougies[bougies.length-1],bougies[bougies.length-1].t+C.ms,C.ms)); if(bougies.length>900) bougies.shift(); }
+  rafraichir();
+}
+function rafraichir(){
+  const ind=indicateurs(bougies,C);
+  if(enMarche){
+    const fin=mode==="live"?bougies.length-2:bougies.length-1;
+    for(let i=ind.debut;i<=fin;i++){
+      if(dernierTraite!==null && bougies[i].t<=dernierTraite) continue;
+      dernierTraite=bougies[i].t;
+      const r=M.etape(bougies,ind,i);
+      if(r.entree){ const pe=r.sortie?r.sortie.pe:M.pos.prix; marqueurs.push({t:bougies[i].t,p:pe,type:r.entree===1?"L":"S"}); toast((r.entree===1?"▲ Achat":"▼ Vente à découvert")+" à "+fp(pe)); }
+      if(r.sortie){ marqueurs.push({t:r.sortie.sortie,p:r.sortie.ps,type:r.sortie.pnl>=0?"g":"p"}); toast((r.sortie.pnl>=0?"✓ ":"✕ ")+r.sortie.raison+" "+sgn(r.sortie.pnl)+" $"); }
+    }
+  }
+  majUI(ind); dessiner(ind);
+}
+
+function majUI(ind){
+  const n=bougies.length; if(n<2) return;
+  const der=bougies[n-1], i=n-2, ref=bougies[Math.max(0,n-1-Math.round(3600000/C.ms))];
+  $("prix").textContent=fp(der.c)+" $";
+  const v=(der.c/ref.c-1)*100; $("var").textContent=(v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(2)+" % sur 1 h"; $("var").className="var "+(v>=0?"pos":"neg");
+  const x=bougies[i].c, up=x>ind.eT[i]&&ind.eR[i]>ind.eL[i], dn=x<ind.eT[i]&&ind.eR[i]<ind.eL[i];
+  $("aTend").innerHTML=up?'<span class="pos">Haussière ▲</span>':dn?'<span class="neg">Baissière ▼</span>':'<span class="mut">Indécise</span>';
+  const r=ind.rsi[i]; $("aRsi").innerHTML=`<span class="${r>70?"neg":r<30?"pos":""}">${r.toFixed(0)}${r>70?" (suracheté)":r<30?" (survendu)":""}</span>`;
+  const e=ind.etat[i];
+  if(e.struct && e.r>1){ $("aStruct").innerHTML=`<span class="mut">Scénario annulé</span><br><span class="mut" style="font-weight:400;font-size:12.5px">la vague 2 a cassé l'origine de la vague 1</span>`; $("aFibo").innerHTML='<span class="mut">—</span>'; }
+  else if(e.struct==="H"){ $("aStruct").innerHTML=`<span class="pos">Vague 1 haussière</span><br><span class="mut" style="font-weight:400;font-size:12.5px">${fp0(e.A)} → ${fp0(e.B)}, vague 2 en cours</span>`;
+    $("aFibo").innerHTML=`<span class="${e.zone?"pos":"mut"}">${(e.r*100).toFixed(0)} % ${e.zone?"✓ dans la zone":"(zone "+Math.round(C.fibMin*1000)/10+"–"+Math.round(C.fibMax*1000)/10+" %)"}</span>`; }
+  else if(e.struct==="B"){ $("aStruct").innerHTML=`<span class="neg">Vague 1 baissière</span><br><span class="mut" style="font-weight:400;font-size:12.5px">${fp0(e.A)} → ${fp0(e.B)}, vague 2 en cours</span>`;
+    $("aFibo").innerHTML=`<span class="${e.zone?"neg":"mut"}">${(e.r*100).toFixed(0)} % ${e.zone?"✓ dans la zone":"(zone "+Math.round(C.fibMin*1000)/10+"–"+Math.round(C.fibMax*1000)/10+" %)"}</span>`; }
+  else { $("aStruct").innerHTML='<span class="mut">Pas de vague 1 nette</span>'; $("aFibo").innerHTML='<span class="mut">—</span>'; }
+
+  const val=M.valeur(der.c);
+  $("capital").textContent=val.toFixed(2)+" $";
+  const tot=val-C.capital; $("total").textContent=sgn(tot)+" $"; $("total").className="val "+(tot>=0?"pos":"neg");
+  M.nouveauJour(der.t); const j=val-M.capJour; $("jour").textContent=sgn(j)+" $"; $("jour").className="val "+(j>=0?"pos":"neg");
+  const g=M.trades.filter(t=>t.pnl>0).length;
+  $("nb").textContent=M.trades.length+" · "+(M.trades.length?Math.round(g/M.trades.length*100):0)+" %";
+  $("frais").textContent="-"+M.fraisTot.toFixed(2)+" $";
+  const eb=$("etatBot");
+  if(!enMarche){ eb.textContent="Arrêté"; eb.className="val"; }
+  else if(M.bloque){ eb.textContent="Stoppé (perte max jour)"; eb.className="val neg"; }
+  else if(der.t<M.pauseJusqua){ eb.textContent="En pause"; eb.className="val neg"; }
+  else if(M.pos){ eb.textContent=M.pos.dir===1?"Joue la hausse":"Joue la baisse"; eb.className="val "+(M.pos.dir===1?"pos":"neg"); }
+  else { eb.textContent="Attend une vague 2"; eb.className="val"; }
+  const pz=$("position");
+  if(M.pos){ const p=M.pos, pnl=val-M.capital-p.mise;
+    pz.innerHTML=`<div class="ligne"><span>Sens</span><span class="tag ${p.dir===1?"long":"short"}">${p.dir===1?"HAUSSE":"BAISSE"} · vague 3</span></div>
+      <div class="ligne"><span>Entrée</span><b>${fp(p.prix)} $</b></div>
+      <div class="ligne"><span>Objectif (ext. ${C.ext})</span><b class="pos">${fp(p.tp)} $</b></div>
+      <div class="ligne"><span>Stop (origine vague 1)</span><b class="neg">${fp(p.sl)} $</b></div>
+      <div class="ligne"><span>Résultat si sortie maintenant</span><b class="${pnl>=0?"pos":"neg"}">${sgn(pnl)} $</b></div>`;
+  } else pz.innerHTML=`<div class="etat">${enMarche?"Pas de position — le bot attend un retracement de vague 2 dans la zone Fibonacci.":"Bot arrêté. Appuie sur « Démarrer »."}</div>`;
+  $("trades").innerHTML=!M.trades.length?'<div class="vide">Pas encore de trade.</div>':M.trades.slice(-15).reverse().map(t=>`
+    <div class="trade"><div><div><span class="tag ${t.dir===1?"long":"short"}">${t.dir===1?"HAUSSE":"BAISSE"}</span> ${heure(t.entree)}</div>
+    <div class="r">${t.raison} · ${fp(t.pe)} → ${fp(t.ps)}</div></div><div class="p ${t.pnl>=0?"pos":"neg"}">${sgn(t.pnl)} $</div></div>`).join("");
+}
+
+function dessiner(ind){
+  const cv=$("graph"), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  if(cv.width!==W*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
+  const x=cv.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
+  if(bougies.length<30) return;
+  const N=Math.min(150,bougies.length), off=bougies.length-N, b=bougies.slice(off);
+  let mn=Infinity,mx=-Infinity; b.forEach(k=>{mn=Math.min(mn,k.l);mx=Math.max(mx,k.h);});
+  if(M.pos){ mn=Math.min(mn,M.pos.sl,M.pos.tp); mx=Math.max(mx,M.pos.sl,M.pos.tp); }
+  const pad=(mx-mn)*0.06; mn-=pad; mx+=pad;
+  const Wg=W-48, gx=i=>(i-off)/(N-1)*Wg, gy=v=>H-((v-mn)/(mx-mn))*H;
+  x.strokeStyle="#26303c"; x.lineWidth=1; x.fillStyle="#8a97a6"; x.font="10px sans-serif";
+  for(let k=0;k<=3;k++){ const v=mn+(mx-mn)*k/3,y=gy(v); x.beginPath(); x.moveTo(0,y); x.lineTo(Wg,y); x.stroke(); x.fillText(fp0(v),Wg+4,Math.min(H-2,Math.max(10,y+3))); }
+  // Zone Fibonacci de la structure en cours
+  const e=ind.etat[bougies.length-2];
+  if(e.struct){
+    const v1=Math.abs(e.B-e.A), s=e.struct==="H"?-1:1, z1=e.B+s*C.fibMin*v1, z2=e.B+s*C.fibMax*v1;
+    x.fillStyle="#3b82f62a"; x.fillRect(0,Math.min(gy(z1),gy(z2)),Wg,Math.abs(gy(z1)-gy(z2)));
+    x.setLineDash([2,3]); x.strokeStyle="#3b82f6"; x.fillStyle="#7aa7f7";
+    [0.382,0.5,0.618,0.786].forEach(f=>{ const v=e.B+s*f*v1, y=gy(v); if(y<0||y>H) return; x.beginPath(); x.moveTo(0,y); x.lineTo(Wg,y); x.stroke(); x.fillText((f*100).toFixed(1)+"%",2,y-2); });
+    x.setLineDash([]);
+  }
+  if(M.pos){ [[M.pos.tp,"#22c55e"],[M.pos.sl,"#ef4444"]].forEach(([v,c])=>{ x.setLineDash([5,4]); x.strokeStyle=c; x.beginPath(); x.moveTo(0,gy(v)); x.lineTo(Wg,gy(v)); x.stroke(); }); x.setLineDash([]); }
+  // EMA 200 et prix
+  x.strokeStyle="#f5b70a"; x.lineWidth=1.5; x.beginPath(); for(let i=off;i<bougies.length;i++){ const y=gy(ind.eT[i]); i===off?x.moveTo(gx(i),y):x.lineTo(gx(i),y); } x.stroke();
+  x.strokeStyle="#e8edf3"; x.lineWidth=1.8; x.beginPath(); for(let i=off;i<bougies.length;i++){ const y=gy(bougies[i].c); i===off?x.moveTo(gx(i),y):x.lineTo(gx(i),y); } x.stroke();
+  // Zigzag des vagues
+  const pv=ind.pivots.filter(p=>p.i>=off); x.strokeStyle="#64748b"; x.lineWidth=1.5; x.beginPath();
+  pv.forEach((p,k)=>{ k?x.lineTo(gx(p.i),gy(p.prix)):x.moveTo(gx(p.i),gy(p.prix)); }); x.stroke();
+  pv.forEach(p=>{ x.fillStyle=p.t==="H"?"#ef4444":"#22c55e"; x.beginPath(); x.arc(gx(p.i),gy(p.prix),2.5,0,7); x.fill(); });
+  // Marqueurs de trades
+  const t0=bougies[off].t;
+  marqueurs.filter(m=>m.t>=t0).forEach(m=>{ const px=(m.t-t0)/C.ms/(N-1)*Wg, py=gy(m.p); x.beginPath();
+    if(m.type==="L"){ x.fillStyle="#22c55e"; x.moveTo(px,py+4); x.lineTo(px-6,py+14); x.lineTo(px+6,py+14); x.closePath(); }
+    else if(m.type==="S"){ x.fillStyle="#ef4444"; x.moveTo(px,py-4); x.lineTo(px-6,py-14); x.lineTo(px+6,py-14); x.closePath(); }
+    else { x.fillStyle=m.type==="g"?"#22c55e":"#ef4444"; x.arc(px,py,5,0,7); } x.fill(); });
+}
+
+/* =========================================================
+   🔬 VÉRIFICATION : apprentissage puis période inconnue
+   1 min : 7 j + 7 j · 3 min et 5 min : 14 j + 14 j
+   ========================================================= */
+const GRILLE={P:[3,5,8], zone:[[0.382,0.618],[0.5,0.786]], ext:[1.272,1.618], minAtr:[2,4]};
+const JOURS={"1m":7,"3m":14,"5m":14};
+let meilleur=null;
+function ouvrir(t,html){ $("resTitre").textContent=t; $("resCorps").innerHTML=html; $("resBoutons").innerHTML='<button class="second" id="bF">Fermer</button>'; $("bF").onclick=()=>$("feuilleRes").classList.remove("ouverte"); $("feuilleRes").classList.add("ouverte"); }
+async function verifier(){
+  ouvrir("Vérification", `<div class="note" style="margin:0">Teste ${3*24} réglages (pivots, zone Fibo, objectif, taille de vague) sur 1, 3 et 5 min. La 1re moitié de l'historique sert à <b>choisir</b>, la 2e moitié à <b>vérifier</b> sur des prix jamais vus.</div><div class="progres"><div id="barre"></div></div><div class="note" id="etape"></div>`);
+  const res=[], btc={}; let demo=false, k=0;
+  const combos=[]; for(const P of GRILLE.P)for(const z of GRILLE.zone)for(const e of GRILLE.ext)for(const a of GRILLE.minAtr) combos.push({P,fibMin:z[0],fibMax:z[1],ext:e,minAtr:a});
+  const tfs=["1m","3m","5m"];
+  for(let ti=0;ti<tfs.length;ti++){
+    const tf=tfs[ti], ms=TFMS[tf], nb=Math.round(2*JOURS[tf]*86400000/ms)+250;
+    $("etape").textContent=`Téléchargement de ${2*JOURS[tf]} jours en ${tf}…`;
+    let b=mode==="live"?await charger(tf,nb,f=>{$("barre").style.width=((ti+f*0.5)/3*100)+"%";}):null;
+    if(!b||b.length<nb*0.8){ b=genererDemo(nb,ms); demo=true; }
+    const mid=b.findIndex(q=>q.t>=b[b.length-1].t-JOURS[tf]*86400000);
+    btc[tf]={app:b[mid-1].c/b[250].c-1,test:b[b.length-1].c/b[mid].c-1};
+    $("etape").textContent=`Calcul en ${tf}…`; await pause(0);
+    for(const cb of combos){
+      const c=cfgDe({...R,...cb,tf}), ind=indicateurs(b,c);
+      res.push({r:{...cb,tf},app:simuler(b,ind,c,250,mid),test:simuler(b,ind,c,mid,b.length)});
+      if(++k%6===0){ $("barre").style.width=((ti+0.5+0.5*(k-ti*combos.length)/combos.length)/3*100)+"%"; await pause(0); }
+    }
+  }
+  $("barre").style.width="100%";
+  const val=res.filter(x=>x.app.n>=5).sort((a,b)=>b.app.res-a.app.res), top=val.slice(0,10);
+  meilleur=top[0];
+  const topOk=top.filter(x=>x.test.res>0).length, gagnTest=res.filter(x=>x.test.res>0).length, m=meilleur;
+  let v,cls;
+  if(!m){ v="Pas assez de trades pour conclure."; cls="neutre"; }
+  else if(m.test.res>0 && topOk>=7){ v=`Le meilleur réglage reste gagnant sur les prix jamais vus (${pct(m.test.res)}), et ${topOk} des 10 meilleurs aussi. Début d'avantage — à confirmer en simulation directe pendant plusieurs semaines.`; cls="pos"; }
+  else if(m.test.res>0){ v=`Le meilleur réglage gagne sur la période inconnue (${pct(m.test.res)}), mais seulement ${topOk} des 10 meilleurs. Résultat fragile, probablement de la chance.`; cls="neutre"; }
+  else { v=`Le meilleur réglage de l'apprentissage (${pct(m.app.res)}) perd sur la période inconnue (${pct(m.test.res)}). Pas d'avantage réel démontré.`; cls="neg"; }
+  const L=(a,b)=>`<div class="ligne"><span>${a}</span><b>${b}</b></div>`;
+  const ligne=x=>`<tr><td>${x.r.tf} · piv ${x.r.P} · ${x.r.fibMin}–${x.r.fibMax} · ×${x.r.ext} · ${x.r.minAtr}ATR</td><td>${x.test.n}</td><td class="${x.app.res>=0?"pos":"neg"}">${pct(x.app.res)}</td><td class="${x.test.res>=0?"pos":"neg"}">${pct(x.test.res)}</td></tr>`;
+  $("resCorps").innerHTML=(demo?`<div class="verdict neutre" style="margin:0 0 10px">Prix réels indisponibles : test sur marché simulé (sans valeur).</div>`:"")+
+    L("BTC pendant la vérification",`1m ${pct(btc["1m"].test)} · 3m ${pct(btc["3m"].test)} · 5m ${pct(btc["5m"].test)}`)+
+    L("Réglages gagnants (vérification)",`${gagnTest} / ${res.length}`)+
+    `<div class="verdict ${cls}">${v}</div>
+     <h4>Les 10 meilleurs de l'apprentissage</h4>
+     <table><tr><th>Réglage</th><th>Trades</th><th>Appr.</th><th>Vérif.</th></tr>${top.map(ligne).join("")}</table>
+     <div class="note">Seule la colonne « Vérif. » compte : c'est ce qui serait arrivé avec de l'argent réel. Frais de 0,1 % par ordre inclus.</div>`;
+  if(m){ $("resBoutons").innerHTML='<button class="second" id="bF">Fermer</button><button class="principal" id="bA">Utiliser le n°1</button>';
+    $("bF").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+    $("bA").onclick=()=>{ R={...R,...meilleur.r}; sauver(); appliquer(); $("feuilleRes").classList.remove("ouverte"); toast("Réglage n°1 appliqué"); }; }
+}
+
+/* =========================================================
+   BOUTONS
+   ========================================================= */
+function appliquer(){ const ch=C.tf!==R.tf; C=cfgDe(R); M=new Moteur(C); marqueurs=[]; if(ch) demarrerFlux(); else { dernierTraite=enMarche?bougies[bougies.length-2].t:null; rafraichir(); } }
+$("btnStart").onclick=()=>{ enMarche=!enMarche; $("btnStart").textContent=enMarche?"Arrêter":"Démarrer"; $("btnStart").classList.toggle("stop",enMarche);
+  if(enMarche&&bougies.length>1) dernierTraite=bougies[bougies.length-2].t; toast(enMarche?"Bot démarré":"Bot arrêté"); rafraichir(); };
+$("btnOptim").onclick=verifier;
+$("btnReglages").onclick=()=>{ for(const k in DEFAUT) $("r_"+k).value=R[k]; $("feuilleReglages").classList.add("ouverte"); };
+$("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
+$("btnSauverR").onclick=()=>{ for(const k in DEFAUT){ const el=$("r_"+k); if(el.tagName==="SELECT") R[k]=el.value; else { const v=parseFloat(el.value); if(isFinite(v)&&v>0) R[k]=v; } }
+  sauver(); $("feuilleReglages").classList.remove("ouverte"); appliquer(); toast("Réglages enregistrés"); };
+document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
+window.addEventListener("resize",()=>bougies.length&&rafraichir());
+demarrerFlux();
+})();
+</script>
+</body>
+</html>

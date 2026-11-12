@@ -1,0 +1,114 @@
+//@version=5
+// =====================================================================
+//  Bot Elliott + Fibonacci + RSI + Moyennes mobiles — pour TradingView
+//  Usage : graphique BTCUSDT (Binance), unité 1 min (ou 3 / 5 min)
+//  Éditeur Pine > coller > « Ajouter au graphique » > onglet « Testeur de stratégie »
+//
+//  Logique (hausse ; la baisse est le miroir) :
+//   1. Vague 1  : un creux (A) puis un sommet (B) confirmés, assez grands (x ATR)
+//   2. Vague 2  : le prix redescend dans la zone Fibonacci (50 % – 78,6 % de A→B)
+//                 sans casser A (règle d'Elliott : la vague 2 ne passe jamais sous l'origine de la vague 1)
+//   3. Entrée   : prix au-dessus de l'EMA 200, puis reprise : RSI repasse au-dessus de 40 ou EMA 9 recroise l'EMA 21
+//   4. Stop     : sous A        Objectif : creux de la vague 2 + 1,618 × (B − A)  (extension de vague 3)
+//
+//  Frais 0,1 % par ordre et glissement inclus : les résultats affichés sont réalistes.
+//  Simulation / aide à la décision uniquement — aucun résultat futur n'est garanti.
+// =====================================================================
+strategy("Elliott + Fibo + RSI (Énergie Bot)", overlay=true, initial_capital=100,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=95,
+     commission_type=strategy.commission.percent, commission_value=0.1,
+     slippage=2, max_bars_back=1000)
+
+// ---------- Réglages ----------
+pivLen      = input.int(5, "Force des pivots (bougies de chaque côté)", minval=2)
+minSwingAtr = input.float(3.0, "Taille mini de la vague 1 (× ATR)", step=0.5)
+fibMin      = input.float(0.5, "Retracement Fibo mini", step=0.05)
+fibMax      = input.float(0.786, "Retracement Fibo maxi", step=0.05)
+ext         = input.float(1.618, "Objectif (extension Fibo)", step=0.1)
+rsiLen      = input.int(14, "RSI — longueur")
+rsiBas      = input.int(40, "RSI — rebond haussier au-dessus de")
+rsiHaut     = input.int(60, "RSI — rebond baissier en dessous de")
+emaRLen     = input.int(9, "EMA rapide")
+emaLLen     = input.int(21, "EMA lente")
+emaTLen     = input.int(200, "EMA de tendance")
+jouerBaisse = input.bool(true, "Jouer aussi la baisse (vente à découvert)")
+
+// ---------- Indicateurs ----------
+emaR = ta.ema(close, emaRLen)
+emaL = ta.ema(close, emaLLen)
+emaT = ta.ema(close, emaTLen)
+rsi  = ta.rsi(close, rsiLen)
+atr  = ta.atr(14)
+rsiMonte  = ta.crossover(rsi, rsiBas) or ta.crossover(emaR, emaL)   // reprise : RSI ou croisement EMA 9/21
+rsiDescend = ta.crossunder(rsi, rsiHaut) or ta.crossunder(emaR, emaL)
+
+// ---------- Pivots (zigzag) : confirmés pivLen bougies après ----------
+ph = ta.pivothigh(high, pivLen, pivLen)
+pl = ta.pivotlow(low, pivLen, pivLen)
+
+var float dernHaut    = na
+var int   dernHautBar = na
+var float dernBas     = na
+var int   dernBasBar  = na
+var int   utiliseH    = na   // sommet B déjà utilisé pour une entrée
+var int   utiliseB    = na   // creux B déjà utilisé pour une entrée
+
+if not na(ph)
+    dernHaut    := ph
+    dernHautBar := bar_index - pivLen
+if not na(pl)
+    dernBas    := pl
+    dernBasBar := bar_index - pivLen
+
+// ---------- Scénario haussier : A = dernier creux, B = dernier sommet, A avant B ----------
+nbDepuisB_h = na(dernHautBar) ? 1 : math.max(1, bar_index - dernHautBar + 1)
+creuxV2     = ta.lowest(low, math.min(nbDepuisB_h, 1000))
+vague1H     = dernHaut - dernBas
+structH     = not na(dernBasBar) and not na(dernHautBar) and dernBasBar < dernHautBar and vague1H >= minSwingAtr * atr
+retrH       = structH ? (dernHaut - creuxV2) / vague1H : na
+zoneH       = structH and retrH >= fibMin and retrH <= fibMax and creuxV2 > dernBas
+tendanceH   = close > emaT
+entreeH     = zoneH and tendanceH and rsiMonte and (na(utiliseH) or dernHautBar != utiliseH)
+
+// ---------- Scénario baissier : A = dernier sommet, B = dernier creux, A avant B ----------
+nbDepuisB_b = na(dernBasBar) ? 1 : math.max(1, bar_index - dernBasBar + 1)
+sommetV2    = ta.highest(high, math.min(nbDepuisB_b, 1000))
+vague1B     = dernHaut - dernBas
+structB     = not na(dernBasBar) and not na(dernHautBar) and dernHautBar < dernBasBar and vague1B >= minSwingAtr * atr
+retrB       = structB ? (sommetV2 - dernBas) / vague1B : na
+zoneB       = structB and retrB >= fibMin and retrB <= fibMax and sommetV2 < dernHaut
+tendanceB   = close < emaT
+entreeB     = jouerBaisse and zoneB and tendanceB and rsiDescend and (na(utiliseB) or dernBasBar != utiliseB)
+
+// ---------- Ordres ----------
+if entreeH and strategy.position_size == 0
+    stopH = dernBas - 0.1 * atr
+    objH  = creuxV2 + ext * vague1H
+    strategy.entry("Hausse", strategy.long)
+    strategy.exit("Sortie hausse", "Hausse", stop=stopH, limit=objH)
+    utiliseH := dernHautBar
+
+if entreeB and strategy.position_size == 0
+    stopB = dernHaut + 0.1 * atr
+    objB  = sommetV2 - ext * vague1B
+    strategy.entry("Baisse", strategy.short)
+    strategy.exit("Sortie baisse", "Baisse", stop=stopB, limit=objB)
+    utiliseB := dernBasBar
+
+// ---------- Affichage ----------
+plot(emaR, "EMA rapide", color=color.new(color.blue, 0))
+plot(emaL, "EMA lente", color=color.new(color.purple, 0))
+plot(emaT, "EMA tendance", color=color.new(color.orange, 0), linewidth=2)
+
+plotshape(not na(ph), "Sommet", shape.triangledown, location.abovebar, color.new(color.red, 30), offset=-pivLen, size=size.tiny)
+plotshape(not na(pl), "Creux", shape.triangleup, location.belowbar, color.new(color.green, 30), offset=-pivLen, size=size.tiny)
+
+// Zone Fibonacci de la vague 2 quand une structure est en place
+plot(structH ? dernHaut - fibMin * vague1H : na, "Fibo hausse mini", color.new(color.green, 40), style=plot.style_linebr)
+plot(structH ? dernHaut - fibMax * vague1H : na, "Fibo hausse maxi", color.new(color.green, 40), style=plot.style_linebr)
+plot(structB ? dernBas + fibMin * vague1B : na, "Fibo baisse mini", color.new(color.red, 40), style=plot.style_linebr)
+plot(structB ? dernBas + fibMax * vague1B : na, "Fibo baisse maxi", color.new(color.red, 40), style=plot.style_linebr)
+
+// Alertes (pour être prévenu sur le téléphone et décider soi-même)
+alertcondition(entreeH, "Signal hausse", "Signal HAUSSE : retracement Fibo vague 2 + RSI + tendance")
+alertcondition(entreeB, "Signal baisse", "Signal BAISSE : retracement Fibo vague 2 + RSI + tendance")
