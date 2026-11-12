@@ -1,5 +1,13 @@
 # Trend Bot — simulation uniquement
 
+## Grid bot (façon Pionex) : https://tbara29.github.io/scalping-bot/grille.html
+- Grille classique (±10 %, 20 grilles) ou large « façon BTC Moon » (-50 % / +150 %, 40 grilles, 1 an)
+- Simulation sur les vrais prix Binance : profit de grille encaissé, latent, comparaison avec « garder »
+- 🔬 relance la même grille à 12 dates différentes pour voir si le résultat dépend de la chance
+
+## Mode 1 min (Elliott + Fibonacci + RSI + EMA) : https://tbara29.github.io/scalping-bot/ultra.html
+- Script TradingView : tradingview_elliott_fibo.pine
+
 ## Mode Long terme : https://tbara29.github.io/scalping-bot/long-terme.html
 - Bougies journalières, historique complet depuis 2017 (BTC ou ETH)
 - Investi quand le prix est au-dessus de sa moyenne mobile (+ marge), à l'abri en dollars sinon

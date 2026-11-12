@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Grid bot — Simulation</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#141a22; --card2:#1b232d; --line:#26303c;
+    --txt:#e8edf3; --mut:#8a97a6; --vert:#22c55e; --rouge:#ef4444;
+    --jaune:#f5b70a; --bleu:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px)}
+  .onglets{display:flex;background:var(--card2);border-radius:12px;padding:4px;margin-bottom:12px}
+  .onglets a{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;color:var(--mut)}
+  .onglets a.actif{background:var(--card);color:var(--txt);box-shadow:0 1px 3px #0006}
+  .bandeau{background:#2a2108;color:var(--jaune);border:1px solid #4a3a0c;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:12px;text-align:center}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px}
+  .paire{font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.4px}
+  .prix{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .var{font-size:13px;font-weight:600}
+  .badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .statut{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;background:var(--card2);white-space:nowrap}
+  .pastille{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+  .live .pastille{background:var(--vert);box-shadow:0 0 0 3px #22c55e33}
+  .demo .pastille{background:var(--jaune)}
+  .carte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .grille{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat .lib{font-size:12px;color:var(--mut)}
+  .stat .val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .grand .val{font-size:26px}
+  .pos{color:var(--vert)} .neg{color:var(--rouge)} .mut{color:var(--mut)}
+  canvas{width:100%;height:210px;display:block}
+  .legende{display:flex;gap:12px;font-size:11.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+  .legende i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  h2{font-size:13px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .jauge{height:12px;border-radius:6px;background:var(--card2);overflow:hidden;display:flex;margin:8px 0 4px}
+  .jauge .a{background:var(--vert);transition:width .4s} .jauge .v{background:var(--rouge);flex:1}
+  .jl{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600}
+  .tend{margin-top:10px;font-size:14px}
+  .etat{font-size:14px;color:var(--mut)}
+  .position .ligne{display:flex;justify-content:space-between;padding:4px 0;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;letter-spacing:.4px}
+  .tag.long{background:#0f2e1a;color:var(--vert)} .tag.short{background:#3a1212;color:var(--rouge)}
+  .trade{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .trade:first-child{border-top:0}
+  .trade .r{font-size:12px;color:var(--mut)}
+  .trade .p{font-weight:700;font-variant-numeric:tabular-nums}
+  .vide{color:var(--mut);font-size:13.5px;text-align:center;padding:10px 0}
+  .actions{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:8px}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px;color:#fff;cursor:pointer}
+  button:disabled{opacity:.5}
+  .principal{flex:1;background:var(--vert);color:#04210f;font-size:16px}
+  .principal.stop{background:var(--rouge);color:#fff}
+  .second{background:var(--card2);border:1px solid var(--line);min-width:50px}
+  .feuille{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;z-index:10}
+  .feuille.ouverte{display:flex}
+  .panneau{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
+  .panneau h3{font-size:18px;margin-bottom:6px}
+  .panneau h4{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 4px}
+  .champ{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);gap:10px}
+  .champ label{font-size:14px} .champ small{display:block;color:var(--mut);font-size:12px}
+  .champ input,.champ select{width:110px;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;text-align:right}
+  .panneau .boutons{display:flex;gap:10px;margin-top:16px}
+  .panneau .boutons button{flex:1}
+  .res .ligne{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;gap:10px}
+  .verdict{margin-top:12px;padding:12px;border-radius:10px;font-size:14px;font-weight:600}
+  .verdict.neg{background:#3a1212} .verdict.pos{background:#0f2e1a} .verdict.neutre{background:#2a2108;color:var(--jaune)}
+  .note{font-size:12.5px;color:var(--mut);margin-top:10px}
+  .progres{height:8px;background:var(--card2);border-radius:4px;overflow:hidden;margin:12px 0}
+  .progres div{height:100%;background:var(--bleu);width:0;transition:width .2s}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;margin-top:6px}
+  th{color:var(--mut);font-weight:600;text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-120px);background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;transition:transform .3s;z-index:20;white-space:nowrap}
+  .toast.vu{transform:translateX(-50%) translateY(0)}
+  .seg{display:flex;gap:8px}
+  .seg button{flex:1;background:var(--card2);border:1px solid var(--line);padding:10px 6px;font-size:14px;color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:2px}
+  .seg button small{font-size:11px;color:var(--mut);font-weight:600}
+  .seg button.on{border-color:var(--bleu);background:#16243a}
+  td+td{white-space:nowrap}
+  .prix{white-space:nowrap;font-size:26px}
+</style>
+</head>
+<body>
+
+<nav class="onglets"><a href="ultra.html">1 min</a><a href="index.html">Court</a><a class="actif" href="grille.html">Grille</a><a href="long-terme.html">Long</a></nav>
+<div class="bandeau">SIMULATION sur l'historique réel — aucun ordre réel</div>
+
+<header>
+  <div>
+    <div class="paire" id="paire">BTC / USDT · Grid bot</div>
+    <div class="prix" id="prix">—</div>
+  </div>
+  <div class="badges"><div class="statut" id="statut"><span class="pastille"></span><span id="statutTxt">Chargement…</span></div></div>
+</header>
+
+<div class="carte">
+  <h2>Type de grille</h2>
+  <div class="seg" id="presets">
+    <button data-p="classique" class="on">Classique<small>±10 % · 30 j</small></button>
+    <button data-p="moon">Façon Moon<small>large · 1 an</small></button>
+    <button data-p="perso">Perso<small>⚙️</small></button>
+  </div>
+  <div class="note" id="descPreset"></div>
+</div>
+
+<div class="carte">
+  <h2 id="titreRes">Résultat</h2>
+  <div class="grille">
+    <div class="stat grand"><div class="lib">Valeur finale</div><div class="val" id="vFin">—</div></div>
+    <div class="stat grand"><div class="lib">Résultat total</div><div class="val" id="vRes">—</div></div>
+    <div class="stat"><div class="lib">Profit de grille encaissé</div><div class="val" id="vGrille">—</div></div>
+    <div class="stat"><div class="lib">Latent (BTC détenu)</div><div class="val" id="vLatent">—</div></div>
+    <div class="stat"><div class="lib">Allers-retours</div><div class="val" id="vCycles">—</div></div>
+    <div class="stat"><div class="lib">Temps dans la fourchette</div><div class="val" id="vRange">—</div></div>
+    <div class="stat"><div class="lib">Si j'avais juste gardé</div><div class="val" id="vHold">—</div></div>
+    <div class="stat"><div class="lib">Pire chute</div><div class="val neg" id="vDD">—</div></div>
+  </div>
+  <div class="verdict" id="verdict" style="display:none"></div>
+</div>
+
+<div class="carte">
+  <h2>Prix et paliers de la grille</h2>
+  <canvas id="gPrix" style="height:220px"></canvas>
+  <div class="legende"><span><i style="background:#e8edf3"></i>Prix</span><span><i style="background:#3b82f6"></i>Paliers</span><span><i style="background:#3b82f622;height:10px"></i>Fourchette</span></div>
+</div>
+
+<div class="carte">
+  <h2>Valeur du bot vs garder</h2>
+  <canvas id="gVal" style="height:180px"></canvas>
+  <div class="legende"><span><i style="background:var(--vert)"></i>Grid bot</span><span><i style="background:#8a97a6"></i>Acheter et garder</span></div>
+</div>
+
+<div class="carte">
+  <h2>Réglages utilisés</h2>
+  <div id="recap" class="position"></div>
+</div>
+
+<div class="actions">
+  <button class="second" id="btnReglages" aria-label="Réglages">⚙️</button>
+  <button class="principal" id="btnMulti" style="background:var(--bleu);color:#fff">🔬 Tester sur 12 périodes</button>
+</div>
+
+<div class="feuille" id="feuilleReglages">
+  <div class="panneau">
+    <h3>Réglages de la grille</h3>
+    <div class="champ"><label>Crypto</label><select id="r_sym"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option></select></div>
+    <div class="champ"><label>Durée du test<small>jours jusqu'à aujourd'hui</small></label><input type="number" id="r_dur" step="10"></div>
+    <div class="champ"><label>Bas de la fourchette<small>% sous le prix de départ</small></label><input type="number" id="r_bas" step="5"></div>
+    <div class="champ"><label>Haut de la fourchette<small>% au-dessus du prix de départ</small></label><input type="number" id="r_haut" step="5"></div>
+    <div class="champ"><label>Nombre de grilles</label><input type="number" id="r_n" step="5"></div>
+    <div class="champ"><label>Espacement</label><select id="r_type"><option value="geo">Géométrique (%)</option><option value="arith">Arithmétique ($)</option></select></div>
+    <div class="champ"><label>Investissement<small>$</small></label><input type="number" id="r_invest" step="50"></div>
+    <div class="champ"><label>Frais par ordre<small>% (Binance 0,1 · Pionex 0,05)</small></label><input type="number" id="r_frais" step="0.01"></div>
+    <div class="champ"><label>Stop-loss<small>% sous le bas de la fourchette (0 = aucun)</small></label><input type="number" id="r_sl" step="5"></div>
+    <div class="boutons"><button class="second" id="btnFermerR">Annuler</button><button class="principal" id="btnSauverR">Lancer le test</button></div>
+  </div>
+</div>
+
+<div class="feuille" id="feuilleRes">
+  <div class="panneau res">
+    <h3>Test sur 12 périodes</h3>
+    <div id="resCorps"></div>
+    <div class="boutons"><button class="second" id="btnFermerRes">Fermer</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const JOUR=86400000;
+const PRESETS={
+  classique:{dur:30, bas:-10, haut:10, n:20, type:"geo", sl:0,
+    desc:"Grille serrée autour du prix : beaucoup de petits allers-retours. Idéale si le prix fait du « yoyo » sans tendance ; elle souffre si le prix sort franchement de la fourchette."},
+  moon:{dur:365, bas:-50, haut:150, n:40, type:"geo", sl:0,
+    desc:"Inspirée du BTC Moon de Pionex : fourchette très large et peu de grilles, pour tenir sur une longue durée. Le bot détient du BTC en permanence et encaisse au passage les grandes oscillations."}
+};
+const DEFAUT={preset:"classique", sym:"BTCUSDT", invest:100, frais:0.1, ...PRESETS.classique};
+delete DEFAUT.desc;
+let R={...DEFAUT};
+try{ const s=JSON.parse(localStorage.getItem("grille_v1")); if(s) R={...DEFAUT,...s}; }catch(e){}
+const sauver=()=>{ try{ localStorage.setItem("grille_v1",JSON.stringify(R)); }catch(e){} };
+
+const $=id=>document.getElementById(id);
+const pct=v=>(v>=0?"+":"")+(v*100).toFixed(1)+" %";
+const usd=v=>(v<0?"-":"")+Math.abs(v).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" $";
+const fp0=v=>v.toLocaleString("fr-FR",{maximumFractionDigits:0});
+const date=t=>new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"2-digit"});
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+function toast(m){ const e=$("toast"); e.textContent=m; e.classList.add("vu"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("vu"),2600); }
+
+/* ---------------- Données ---------------- */
+const SOURCES=["https://api.binance.com","https://data-api.binance.vision"];
+const TFMS={"5m":300000,"15m":900000,"1h":3600000,"4h":14400000};
+const tfPour=d=> d<=30?"5m": d<=120?"15m": d<=400?"1h":"4h";
+async function paquet(sym,tf,limit,fin){
+  for(const s of SOURCES){
+    try{ const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),10000);
+      const r=await fetch(`${s}/api/v3/klines?symbol=${sym}&interval=${tf}&limit=${limit}`+(fin?`&endTime=${fin}`:""),{signal:ctl.signal});
+      clearTimeout(to); if(!r.ok) continue;
+      return (await r.json()).map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4]}));
+    }catch(e){}
+  }
+  return null;
+}
+async function charger(sym,tf,total){
+  let out=[],fin=null;
+  while(out.length<total){ const p=await paquet(sym,tf,Math.min(1000,total-out.length),fin); if(!p) return out.length?out:null; if(!p.length) break; out=p.concat(out); fin=p[0].t-1; }
+  return out;
+}
+function genererDemo(n,ms){
+  let g=(Date.now()%9999)+3; const al=()=>(g=(g*16807)%2147483647)/2147483647, ga=()=>Math.sqrt(-2*Math.log(al()||1e-9))*Math.cos(2*Math.PI*al());
+  const sig=0.03*Math.sqrt(ms/JOUR); let d=0, c=72000, t=Math.floor(Date.now()/ms)*ms-n*ms; const out=[];
+  for(let i=0;i<n;i++){ if(al()<0.01) d=(al()-0.5)*sig*0.3; const o=c; c=o*Math.exp(d+ga()*sig);
+    out.push({t,o,c,h:Math.max(o,c)*(1+Math.abs(ga())*sig*0.6),l:Math.min(o,c)*(1-Math.abs(ga())*sig*0.6)}); t+=ms; }
+  return out;
+}
+
+/* ---------------- Simulation d'une grille (spot, sans levier) ----------------
+   La fourchette est coupée en n « cases ». Chaque case détient soit des USDT (ordre d'achat
+   posé sur son palier bas), soit du BTC (ordre de vente posé sur son palier haut).
+   Au départ : les cases au-dessus du prix sont remplies en BTC (achat au marché), les autres en USDT.
+   Dans chaque bougie, le prix est supposé suivre ouverture → plus bas → plus haut → clôture
+   (ou ouverture → plus haut → plus bas → clôture si la bougie est rouge). */
+function simGrille(b,p,de=0,a=b.length){
+  const f=p.frais/100, n=Math.max(2,p.n|0), P0=b[de].o, bas=P0*(1+p.bas/100), haut=P0*(1+p.haut/100);
+  const L=new Float64Array(n+1);
+  for(let k=0;k<=n;k++) L[k]= p.type==="arith" ? bas+(haut-bas)*k/n : bas*Math.pow(haut/bas,k/n);
+  const u=p.invest/n, st=new Uint8Array(n), usdt=new Float64Array(n), btc=new Float64Array(n), cout=new Float64Array(n);
+  let frais=0, cycles=0, encaisse=0, arret=false, prixArret=null;
+  for(let k=0;k<n;k++){
+    if(L[k]>=P0){ btc[k]=u*(1-f)/P0; cout[k]=u; st[k]=1; frais+=u*f; } else { usdt[k]=u; }
+  }
+  const qHold=p.invest*(1-f)/P0, seuilSL=p.sl>0?bas*(1-p.sl/100):-1;
+  const pas=Math.max(1,Math.floor((a-de)/500)), courbe=[], hold=[], temps=[];
+  let pic=p.invest, dd=0, dansFourchette=0, val=p.invest;
+  const valeur=x=>{ let v=0; for(let k=0;k<n;k++) v+=usdt[k]+btc[k]*x; return v; };
+  for(let i=de;i<a;i++){
+    const c=b[i];
+    if(!arret){
+      const chemin = c.c>=c.o ? [c.o,c.l,c.h,c.c] : [c.o,c.h,c.l,c.c];
+      for(let s=0;s<3;s++){
+        const x=chemin[s], y=chemin[s+1];
+        if(seuilSL>0 && Math.min(x,y)<=seuilSL){       // stop-loss : on vend tout et on s'arrête
+          for(let k=0;k<n;k++) if(st[k]){ const pr=btc[k]*seuilSL*(1-f); frais+=btc[k]*seuilSL*f; usdt[k]=pr; btc[k]=0; st[k]=0; }
+          arret=true; prixArret=seuilSL; break;
+        }
+        if(y<x){ for(let k=0;k<n;k++) if(!st[k] && L[k]<x && L[k]>=y){ btc[k]=usdt[k]*(1-f)/L[k]; frais+=usdt[k]*f; cout[k]=usdt[k]; usdt[k]=0; st[k]=1; } }
+        else if(y>x){ for(let k=0;k<n;k++) if(st[k] && L[k+1]>x && L[k+1]<=y){ const brut=btc[k]*L[k+1], pr=brut*(1-f); frais+=brut*f; encaisse+=pr-cout[k]; usdt[k]=pr; btc[k]=0; st[k]=0; cycles++; } }
+      }
+    }
+    val=valeur(c.c);
+    if(c.c>=bas && c.c<=haut) dansFourchette++;
+    pic=Math.max(pic,val); dd=Math.min(dd,val/pic-1);
+    if((i-de)%pas===0 || i===a-1){ courbe.push(val); hold.push(qHold*c.c); temps.push(i); }
+  }
+  const fin=b[a-1].c;
+  return {L,P0,bas,haut,final:val,res:val/p.invest-1,encaisse,latent:val-p.invest-encaisse,cycles,frais,dd,
+    dansFourchette:dansFourchette/(a-de), hold:qHold*fin, holdRes:qHold*fin/p.invest-1, courbe, holdC:hold, temps, arret, prixArret,
+    jours:(b[a-1].t-b[de].t)/JOUR};
+}
+
+/* ---------------- Affichage ---------------- */
+let mode=null, B=[], S=null;
+async function lancer(){
+  const tf=tfPour(R.dur), ms=TFMS[tf], nb=Math.ceil(R.dur*JOUR/ms);
+  $("statutTxt").textContent="Chargement…"; $("statut").className="statut";
+  const d=await charger(R.sym,tf,nb);
+  if(d && d.length>nb*0.8){ mode="live"; B=d; } else { mode="demo"; B=genererDemo(nb,ms); }
+  $("statut").className="statut "+mode;
+  $("statutTxt").textContent=mode==="live"?"Prix réels Binance":"Mode démo (marché simulé)";
+  $("paire").textContent=(R.sym==="BTCUSDT"?"BTC":"ETH")+" / USDT · grille · "+tf;
+  $("prix").textContent=B[B.length-1].c.toLocaleString("fr-FR",{maximumFractionDigits:2})+" $";
+  S=simGrille(B,R); afficher();
+}
+function afficher(){
+  document.querySelectorAll("#presets button").forEach(x=>x.classList.toggle("on",x.dataset.p===R.preset));
+  $("descPreset").textContent=R.preset==="perso"?"Tes propres réglages (⚙️).":PRESETS[R.preset].desc;
+  $("titreRes").textContent=`Si tu l'avais lancée le ${date(B[0].t)} (${Math.round(S.jours)} jours)`;
+  const col=(id,v,txt)=>{ $(id).textContent=txt; $(id).className="val "+(v>=0?"pos":"neg"); };
+  $("vFin").textContent=usd(S.final);
+  col("vRes",S.res,pct(S.res));
+  col("vGrille",S.encaisse,(S.encaisse>=0?"+":"")+usd(S.encaisse));
+  { const lt=Math.abs(S.latent)<0.005?0:S.latent; col("vLatent",lt,(lt>=0?"+":"")+usd(lt)); }
+  $("vCycles").textContent=S.cycles;
+  $("vRange").textContent=Math.round(S.dansFourchette*100)+" %";
+  col("vHold",S.holdRes,pct(S.holdRes));
+  $("vDD").textContent=(S.dd*100).toFixed(1)+" %";
+  const v=$("verdict"); v.style.display="block";
+  const ecart=S.res-S.holdRes;
+  if(S.res>0 && ecart>=0){ v.className="verdict pos"; v.textContent=`Gagnant, et mieux que de simplement garder (${pct(S.res)} contre ${pct(S.holdRes)}). Le marché a assez oscillé dans la fourchette pour que les allers-retours paient.`; }
+  else if(S.res>0){ v.className="verdict neutre"; v.textContent=`Gagnant (${pct(S.res)}), mais moins que de simplement garder (${pct(S.holdRes)}) : en marché qui monte, la grille revend trop tôt.`; }
+  else if(ecart>0){ v.className="verdict neutre"; v.textContent=`Perdant (${pct(S.res)}), mais moins que de garder (${pct(S.holdRes)}). Le profit de grille (${usd(S.encaisse)}) a amorti la baisse sans la compenser : quand le prix descend, la grille finit pleine de BTC.`; }
+  else { v.className="verdict neg"; v.textContent=`Perdant (${pct(S.res)}) et moins bien que garder (${pct(S.holdRes)}).`; }
+  if(S.arret) v.textContent+=` Stop-loss déclenché à ${fp0(S.prixArret)} $.`;
+  $("recap").innerHTML=[
+    ["Fourchette",`${fp0(S.bas)} $ → ${fp0(S.haut)} $ (${R.bas} % / +${R.haut} %)`],
+    ["Grilles",`${R.n} · ${R.type==="geo"?"géométrique":"arithmétique"} · écart ≈ ${(((Math.pow(S.haut/S.bas,1/R.n))-1)*100).toFixed(2)} %`],
+    ["Investissement",usd(R.invest)+` (${usd(R.invest/R.n)} par grille)`],
+    ["Frais",`${R.frais} % par ordre · total payé ${usd(S.frais)}`],
+    ["Stop-loss",R.sl>0?`${R.sl} % sous le bas`:"aucun"]
+  ].map(([a,b])=>`<div class="ligne"><span>${a}</span><b style="text-align:right">${b}</b></div>`).join("")+
+  (((Math.pow(S.haut/S.bas,1/R.n))-1)*100 < 2*R.frais ? `<div class="verdict neg">Écart entre grilles plus petit que les frais d'un aller-retour : chaque cycle perd de l'argent. Réduis le nombre de grilles.</div>`:"");
+  dessinerPrix(); dessinerVal();
+}
+function cadre(id){ const cv=$(id), dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; cv.width=W*dpr; cv.height=H*dpr; const x=cv.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0); return {x,W,H}; }
+function axes(x,W,H,mn,mx,gy,fmt){ x.strokeStyle="#26303c"; x.fillStyle="#8a97a6"; x.font="10px sans-serif"; x.lineWidth=1;
+  for(let k=0;k<=3;k++){ const v=mn+(mx-mn)*k/3, y=gy(v); x.beginPath(); x.moveTo(0,y); x.lineTo(W-48,y); x.stroke(); x.fillText(fmt(v),W-44,Math.max(10,Math.min(H-2,y+3))); } }
+function dessinerPrix(){
+  const {x,W,H}=cadre("gPrix"), n=B.length, Wg=W-48, pas=Math.max(1,Math.floor(n/600));
+  let mn=S.bas, mx=S.haut; for(const k of B){ mn=Math.min(mn,k.l); mx=Math.max(mx,k.h); }
+  const pad=(mx-mn)*0.04; mn-=pad; mx+=pad;
+  const gx=i=>i/(n-1)*Wg, gy=v=>H-(v-mn)/(mx-mn)*H;
+  x.fillStyle="#3b82f61a"; x.fillRect(0,gy(S.haut),Wg,gy(S.bas)-gy(S.haut));
+  axes(x,W,H,mn,mx,gy,fp0);
+  const etape=Math.max(1,Math.ceil(S.L.length/40)); x.strokeStyle="#3b82f655";
+  for(let k=0;k<S.L.length;k+=etape){ const y=gy(S.L[k]); x.beginPath(); x.moveTo(0,y); x.lineTo(Wg,y); x.stroke(); }
+  x.strokeStyle="#3b82f6"; x.lineWidth=1.5; [S.bas,S.haut].forEach(v=>{ x.beginPath(); x.moveTo(0,gy(v)); x.lineTo(Wg,gy(v)); x.stroke(); });
+  x.strokeStyle="#e8edf3"; x.lineWidth=1.5; x.beginPath();
+  for(let i=0;i<n;i+=pas){ i?x.lineTo(gx(i),gy(B[i].c)):x.moveTo(gx(i),gy(B[i].c)); } x.lineTo(gx(n-1),gy(B[n-1].c)); x.stroke();
+}
+function dessinerVal(){
+  const {x,W,H}=cadre("gVal"), Wg=W-48, n=B.length;
+  let mn=Infinity,mx=-Infinity; S.courbe.forEach((v,i)=>{ mn=Math.min(mn,v,S.holdC[i]); mx=Math.max(mx,v,S.holdC[i]); });
+  const pad=(mx-mn)*0.06||1; mn-=pad; mx+=pad;
+  const gx=i=>i/(n-1)*Wg, gy=v=>H-(v-mn)/(mx-mn)*H;
+  axes(x,W,H,mn,mx,gy,v=>Math.round(v)+" $");
+  x.setLineDash([3,3]); x.strokeStyle="#8a97a6"; x.beginPath(); x.moveTo(0,gy(R.invest)); x.lineTo(Wg,gy(R.invest)); x.stroke(); x.setLineDash([]);
+  const ligne=(arr,c,w)=>{ x.strokeStyle=c; x.lineWidth=w; x.beginPath(); arr.forEach((v,k)=>{ const X=gx(S.temps[k]); k?x.lineTo(X,gy(v)):x.moveTo(X,gy(v)); }); x.stroke(); };
+  ligne(S.holdC,"#8a97a6",1.5); ligne(S.courbe,"#22c55e",2);
+}
+
+/* ---------------- 🔬 Test sur 12 périodes différentes ---------------- */
+async function multi(){
+  $("feuilleRes").classList.add("ouverte");
+  const tf=R.dur<=120?"1h":"4h", ms=TFMS[tf], total=Math.max(730, R.dur*3), nb=Math.ceil(total*JOUR/ms);
+  $("resCorps").innerHTML=`<div class="note" style="margin:0">Même grille (mêmes % autour du prix de départ), lancée à 12 dates différentes sur les ${Math.round(total/365*10)/10} dernières années. Ça montre si le résultat dépend juste de la chance du moment.</div><div class="note" id="etM">Téléchargement…</div>`;
+  let b=mode==="live"?await charger(R.sym,tf,nb):null, demo=false;
+  if(!b||b.length<nb*0.8){ b=genererDemo(nb,ms); demo=true; }
+  const lg=Math.round(R.dur*JOUR/ms), pas=Math.floor((b.length-lg)/11), lignes=[];
+  for(let w=0;w<12;w++){ const de=w*pas, a=Math.min(b.length,de+lg); lignes.push({t:b[de].t, s:simGrille(b,R,de,a)}); }
+  await pause(0);
+  const gagn=lignes.filter(l=>l.s.res>0).length, mieux=lignes.filter(l=>l.s.res>l.s.holdRes).length;
+  const moy=lignes.reduce((a,l)=>a+l.s.res,0)/12, pire=Math.min(...lignes.map(l=>l.s.res)), meil=Math.max(...lignes.map(l=>l.s.res));
+  const moyH=lignes.reduce((a,l)=>a+l.s.holdRes,0)/12;
+  let v,cls;
+  if(gagn>=9 && moy>0){ v=`Gagnant dans ${gagn} périodes sur 12, en moyenne ${pct(moy)}. Le pire cas reste ${pct(pire)} : c'est ce que tu dois être prêt à perdre.`; cls="pos"; }
+  else if(moy>0){ v=`Gagnant dans ${gagn} périodes sur 12 seulement. Le résultat dépend beaucoup du moment où on lance la grille. Pire cas : ${pct(pire)}.`; cls="neutre"; }
+  else { v=`En moyenne perdant (${pct(moy)}), gagnant dans ${gagn} périodes sur 12. Pire cas : ${pct(pire)}.`; cls="neg"; }
+  $("resCorps").innerHTML=(demo?`<div class="verdict neutre" style="margin:0 0 10px">Prix réels indisponibles : marché simulé (sans valeur).</div>`:"")+
+    `<div class="ligne"><span>Périodes gagnantes</span><b>${gagn} / 12</b></div>`+
+    `<div class="ligne"><span>Mieux que garder</span><b>${mieux} / 12</b></div>`+
+    `<div class="ligne"><span>Moyenne grille · garder</span><b>${pct(moy)} · ${pct(moyH)}</b></div>`+
+    `<div class="ligne"><span>Meilleure · pire période</span><b><span class="pos">${pct(meil)}</span> · <span class="neg">${pct(pire)}</span></b></div>`+
+    `<div class="verdict ${cls}">${v}</div>`+
+    `<table style="margin-top:12px"><tr><th>Départ</th><th>BTC</th><th>Grille</th><th>Encaissé</th></tr>`+
+    lignes.map(l=>`<tr><td>${date(l.t)}</td><td class="${l.s.holdRes>=0?"pos":"neg"}">${pct(l.s.holdRes)}</td><td class="${l.s.res>=0?"pos":"neg"}">${pct(l.s.res)}</td><td>${usd(l.s.encaisse)}</td></tr>`).join("")+`</table>`+
+    `<div class="note">Bougies de ${tf} : les petits allers-retours à l'intérieur d'une bougie ne sont pas comptés, le profit de grille réel serait un peu plus élevé sur une grille serrée.</div>`;
+}
+
+/* ---------------- Boutons ---------------- */
+document.querySelectorAll("#presets button").forEach(bt=>bt.onclick=()=>{
+  const p=bt.dataset.p;
+  if(p==="perso"){ $("btnReglages").click(); return; }
+  const {desc,...vals}=PRESETS[p]; R={...R,...vals,preset:p}; sauver(); lancer();
+});
+$("btnReglages").onclick=()=>{ for(const k of ["sym","dur","bas","haut","n","type","invest","frais","sl"]) $("r_"+k).value=R[k]; $("feuilleReglages").classList.add("ouverte"); };
+$("btnFermerR").onclick=()=>$("feuilleReglages").classList.remove("ouverte");
+$("btnSauverR").onclick=()=>{
+  for(const k of ["sym","dur","bas","haut","n","type","invest","frais","sl"]){ const el=$("r_"+k);
+    if(el.tagName==="SELECT") R[k]=el.value; else { const v=parseFloat(el.value); if(isFinite(v)) R[k]=v; } }
+  R.bas=-Math.min(95,Math.abs(R.bas)); R.haut=Math.max(1,R.haut); R.n=Math.max(2,Math.min(300,Math.round(R.n))); R.dur=Math.max(1,Math.min(1500,Math.round(R.dur)));
+  R.invest=Math.max(1,R.invest); R.frais=Math.max(0,R.frais); R.sl=Math.max(0,R.sl);
+  const p=PRESETS[R.preset]; if(!p || ["dur","bas","haut","n","type","sl"].some(k=>p[k]!==R[k])) R.preset="perso";
+  sauver(); $("feuilleReglages").classList.remove("ouverte"); lancer();
+};
+$("btnMulti").onclick=multi;
+$("btnFermerRes").onclick=()=>$("feuilleRes").classList.remove("ouverte");
+document.querySelectorAll(".feuille").forEach(f=>f.addEventListener("click",e=>{ if(e.target===f) f.classList.remove("ouverte"); }));
+window.addEventListener("resize",()=>S&&afficher());
+lancer();
+})();
+</script>
+</body>
+</html>
